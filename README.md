@@ -16,3 +16,13 @@ Existing options don't solve this problem efficiently :
 As a result, usable items often end up in the trash at move-out,
 while new students spend money on things they could get free or
 cheaply from someone in the same building.
+
+## Project structure
+
+Application is based on MVVM model.
+
+the file structure of the project is shown below:
+
+![projectStructureFiles](resources/ProjectStructure.png)
+
+UML
