@@ -25,4 +25,6 @@ the file structure of the project is shown below:
 
 ![projectStructureFiles](resources/ProjectStructure.png)
 
-UML
+UML schema:
+
+![projectUMLStructure](resources/UML.png)
