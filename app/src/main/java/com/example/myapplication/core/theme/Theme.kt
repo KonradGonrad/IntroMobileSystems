@@ -1,4 +1,11 @@
 package com.example.myapplication.core.theme
 
-class Theme {
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.Composable
+
+@Composable
+fun MyApplicationTheme(content: @Composable () -> Unit) {
+    MaterialTheme(
+        content = content
+    )
 }
