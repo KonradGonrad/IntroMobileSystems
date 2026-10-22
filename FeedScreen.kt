@@ -8,6 +8,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun Main_Screen(
     onNavigateToAddItem: () -> Unit = {},
@@ -34,39 +35,27 @@ fun Main_Screen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Row {
-            Button(
-                onClick = {},
-                colors = ButtonDefaults.buttonColors(containerColor = Color.Green)
-            ) {
-                Text("All")
-            }
+        var selectedIndex by remember { mutableIntStateOf(0) }
+        val options = listOf("All", "Clothes", "Electronics", "Books")
 
-            Spacer(modifier = Modifier.width(4.dp))
-
-            Button(
-                onClick = {},
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50))
-            ) {
-                Text("Clothes")
-            }
-
-            Spacer(modifier = Modifier.width(4.dp))
-
-            Button(
-                onClick = {},
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50))
-            ) {
-                Text("Electronics")
-            }
-
-            Spacer(modifier = Modifier.width(4.dp))
-
-            Button(
-                onClick = {},
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50))
-            ) {
-                Text("Books")
+        SingleChoiceSegmentedButtonRow(
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            options.forEachIndexed { index, label ->
+                SegmentedButton(
+                    shape = SegmentedButtonDefaults.itemShape(
+                        index = index,
+                        count = options.size
+                    ),
+                    colors = SegmentedButtonDefaults.colors(
+                        activeContainerColor = Color.Green,
+                        activeContentColor = Color.White,
+                        activeBorderColor = Color(0xFF4CAF50)
+                    ),
+                    onClick = { selectedIndex = index },
+                    selected = index == selectedIndex,
+                    label = { Text(label, maxLines = 1) }
+                )
             }
         }
 
