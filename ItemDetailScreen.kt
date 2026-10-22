@@ -105,7 +105,7 @@ fun Item_Detail_Screen(onBackClick: () -> Unit = {}) {
                 .height(50.dp),
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50))
         ) {
-            Text("Contact owner", fontSize = 16.sp)
+            Text("Reserve", fontSize = 16.sp)
         }
     }
 }
