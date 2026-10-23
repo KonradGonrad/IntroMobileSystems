@@ -34,8 +34,10 @@ UML schema:
 
 Konrad Kargul: Design and
 first screens.
+
 Aleksander Szaforski: First
 visual in android studio.
+
 Antoni Ciszewski
 Presentation, concept for
 screens, user stories.
