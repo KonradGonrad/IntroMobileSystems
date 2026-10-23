@@ -29,7 +29,7 @@ UML schema:
 
 ![projectUMLStructure](resources/UML.png)
 
-##TEAM RESPONSIBILITIES M1
+## TEAM RESPONSIBILITIES M1
 
 
 Konrad Kargul: Design and
