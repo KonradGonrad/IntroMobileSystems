@@ -28,3 +28,14 @@ the file structure of the project is shown below:
 UML schema:
 
 ![projectUMLStructure](resources/UML.png)
+
+##TEAM RESPONSIBILITIES M1
+
+
+Konrad Kargul: Design and
+first screens.
+Aleksander Szaforski: First
+visual in android studio.
+Antoni Ciszewski
+Presentation, concept for
+screens, user stories.
