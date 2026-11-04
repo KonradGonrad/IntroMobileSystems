@@ -21,6 +21,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.material.icons.outlined.CloudUpload
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -54,11 +55,14 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.myapplication.core.theme.DormGreen
 import com.example.myapplication.core.theme.TextMuted
 import com.example.myapplication.data.model.Category
 import com.example.myapplication.data.model.Condition
+import com.example.myapplication.ui.components.InfoBanner
+import com.example.myapplication.ui.components.OfflineChip
 
 @Composable
 fun AddItemScreen(
@@ -68,6 +72,7 @@ fun AddItemScreen(
 ) {
     val form = viewModel.form
     val errors = viewModel.errors
+    val isOnline by viewModel.isOnline.collectAsStateWithLifecycle()
 
     // go back to the feed after the listing is stored in the database
     LaunchedEffect(viewModel.isSaved) {
@@ -75,7 +80,7 @@ fun AddItemScreen(
     }
 
     Scaffold(
-        topBar = { AddItemTopBar(onBackClick) },
+        topBar = { AddItemTopBar(isOnline, onBackClick) },
         bottomBar = {
             PublishBar(
                 isSaving = viewModel.isSaving,
@@ -94,6 +99,14 @@ fun AddItemScreen(
                 .padding(horizontal = 20.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            if (!isOnline) {
+                InfoBanner(
+                    icon = Icons.Outlined.CloudOff,
+                    title = "No connection? Keep adding.",
+                    text = "We will save the listing on this phone and publish it once the connection is back."
+                )
+            }
+
             FormSection("Item title") {
                 OutlinedTextField(
                     value = form.title,
@@ -142,7 +155,7 @@ fun AddItemScreen(
 }
 
 @Composable
-private fun AddItemTopBar(onBackClick: () -> Unit) {
+private fun AddItemTopBar(isOnline: Boolean, onBackClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -161,6 +174,9 @@ private fun AddItemTopBar(onBackClick: () -> Unit) {
                 .weight(1f)
                 .semantics { heading() }
         )
+        if (!isOnline) {
+            OfflineChip(modifier = Modifier.padding(end = 12.dp))
+        }
     }
 }
 

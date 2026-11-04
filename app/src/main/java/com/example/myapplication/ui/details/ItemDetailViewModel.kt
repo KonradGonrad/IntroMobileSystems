@@ -34,6 +34,9 @@ class ItemDetailViewModel(
         .map { item -> if (item == null) DetailUiState.NotFound else DetailUiState.Loaded(item) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DetailUiState.Loading)
 
+    val isOnline: StateFlow<Boolean> = repository.isOnline
+    val lastSyncTime: StateFlow<Long?> = repository.lastSyncTime
+
     fun onReserveClick() {
         viewModelScope.launch { repository.reserve(itemId) }
     }
