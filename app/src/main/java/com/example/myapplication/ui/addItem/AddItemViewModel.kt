@@ -12,6 +12,7 @@ import com.example.myapplication.DormSwapApp
 import com.example.myapplication.data.model.Category
 import com.example.myapplication.data.model.Condition
 import com.example.myapplication.data.repository.ItemRepository
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
 data class AddItemForm(
@@ -23,6 +24,8 @@ data class AddItemForm(
 )
 
 class AddItemViewModel(private val repository: ItemRepository) : ViewModel() {
+
+    val isOnline: StateFlow<Boolean> = repository.isOnline
 
     var form by mutableStateOf(AddItemForm())
         private set

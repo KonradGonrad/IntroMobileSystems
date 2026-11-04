@@ -42,6 +42,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -53,6 +54,8 @@ import com.example.myapplication.data.model.ListingStatus
 import com.example.myapplication.ui.components.ConditionLabel
 import com.example.myapplication.ui.components.InfoBanner
 import com.example.myapplication.ui.components.ItemPhoto
+import com.example.myapplication.ui.components.OfflineChip
+import com.example.myapplication.ui.components.formatSyncTime
 import com.example.myapplication.ui.components.StatusChip
 import com.example.myapplication.ui.feed.LikeButton
 
@@ -62,6 +65,8 @@ fun ItemDetailScreen(
     viewModel: ItemDetailViewModel = viewModel(factory = ItemDetailViewModel.Factory)
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val isOnline by viewModel.isOnline.collectAsStateWithLifecycle()
+    val lastSyncTime by viewModel.lastSyncTime.collectAsStateWithLifecycle()
 
     when (val s = state) {
         DetailUiState.Loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -80,6 +85,8 @@ fun ItemDetailScreen(
 
         is DetailUiState.Loaded -> ItemDetailContent(
             item = s.item,
+            isOnline = isOnline,
+            lastSyncTime = lastSyncTime,
             onBackClick = onBackClick,
             onReserveClick = viewModel::onReserveClick,
             onCancelClick = viewModel::onCancelReservationClick,
@@ -91,13 +98,15 @@ fun ItemDetailScreen(
 @Composable
 private fun ItemDetailContent(
     item: Item,
+    isOnline: Boolean,
+    lastSyncTime: Long?,
     onBackClick: () -> Unit,
     onReserveClick: () -> Unit,
     onCancelClick: () -> Unit,
     onToggleLike: () -> Unit
 ) {
     Scaffold(
-        bottomBar = { ReserveBar(item, onReserveClick, onCancelClick) }
+        bottomBar = { ReserveBar(item, lastSyncTime, onReserveClick, onCancelClick) }
     ) { padding ->
         Column(
             modifier = Modifier
@@ -120,6 +129,14 @@ private fun ItemDetailContent(
                         .statusBarsPadding()
                         .padding(8.dp)
                 )
+                if (!isOnline) {
+                    OfflineChip(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .statusBarsPadding()
+                            .padding(16.dp)
+                    )
+                }
             }
 
             Column(modifier = Modifier.padding(20.dp)) {
@@ -204,7 +221,7 @@ private fun OwnerRow(ownerName: String) {
 }
 
 @Composable
-private fun ReserveBar(item: Item, onReserveClick: () -> Unit, onCancelClick: () -> Unit) {
+private fun ReserveBar(item: Item, lastSyncTime: Long?, onReserveClick: () -> Unit, onCancelClick: () -> Unit) {
     Surface(shadowElevation = 8.dp) {
         Column(
             modifier = Modifier
@@ -225,7 +242,7 @@ private fun ReserveBar(item: Item, onReserveClick: () -> Unit, onCancelClick: ()
                         text = if (item.pendingSync) {
                             "Saved on this phone. It will be sent when you're online."
                         } else {
-                            "Request sent. The owner will confirm the reservation."
+                            "Request sent (simulated, no real server yet). The owner will confirm the reservation."
                         }
                     )
                     OutlinedButton(
@@ -268,6 +285,13 @@ private fun ReserveBar(item: Item, onReserveClick: () -> Unit, onCancelClick: ()
                     Text(if (item.status == ListingStatus.RESERVED) "Already reserved" else "No longer available")
                 }
             }
+            Text(
+                text = "Data available offline" + (lastSyncTime?.let { " · as of ${formatSyncTime(it)}" } ?: ""),
+                style = MaterialTheme.typography.bodySmall,
+                color = TextMuted,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
         }
     }
 }
