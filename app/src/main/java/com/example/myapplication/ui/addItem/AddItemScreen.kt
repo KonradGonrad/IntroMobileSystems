@@ -107,6 +107,8 @@ fun AddItemScreen(
                 )
             }
 
+            PhotoSection(viewModel = viewModel, category = form.category)
+
             FormSection("Item title") {
                 OutlinedTextField(
                     value = form.title,

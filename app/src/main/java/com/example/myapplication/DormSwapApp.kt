@@ -4,6 +4,7 @@ import android.app.Application
 import com.example.myapplication.core.network.NetworkMonitor
 import com.example.myapplication.data.local.AppDatabase
 import com.example.myapplication.data.local.AppPreferences
+import com.example.myapplication.data.photo.PhotoStorage
 import com.example.myapplication.data.remote.FakeUploadService
 import com.example.myapplication.data.remote.ListingsApi
 import com.example.myapplication.data.repository.ItemRepository
@@ -24,11 +25,15 @@ class DormSwapApp : Application() {
     lateinit var repository: ItemRepository
         private set
 
+    lateinit var photoStorage: PhotoStorage
+        private set
+
     override fun onCreate() {
         super.onCreate()
         val database = AppDatabase.create(this)
         val prefs = AppPreferences(this)
         val networkMonitor = NetworkMonitor(this)
+        photoStorage = PhotoStorage(this)
 
         repository = ItemRepository(
             dao = database.itemDao(),
