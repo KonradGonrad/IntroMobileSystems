@@ -1,6 +1,7 @@
 package com.example.myapplication.ui.feed
 
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -20,9 +21,19 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.outlined.Clear
+import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.material.icons.outlined.Eco
+import androidx.compose.material.icons.outlined.ErrorOutline
+import androidx.compose.material.icons.outlined.MoreVert
+import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.BottomAppBar
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
@@ -35,6 +46,9 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -48,6 +62,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.myapplication.core.theme.DormGreen
 import com.example.myapplication.core.theme.TextMuted
 import com.example.myapplication.data.model.Category
+import com.example.myapplication.data.repository.SyncStatus
+import com.example.myapplication.ui.components.InfoBanner
+import com.example.myapplication.ui.components.OfflineChip
+import com.example.myapplication.ui.components.formatSyncTime
 
 @Composable
 fun FeedScreen(
@@ -56,6 +74,7 @@ fun FeedScreen(
     viewModel: FeedViewModel = viewModel(factory = FeedViewModel.Factory)
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val sync by viewModel.syncState.collectAsStateWithLifecycle()
 
     Scaffold(
         bottomBar = {
@@ -89,7 +108,11 @@ fun FeedScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             item(span = { GridItemSpan(maxLineSpan) }) {
-                FeedHeader()
+                FeedHeader(
+                    sync = sync,
+                    onRefreshClick = viewModel::onRefreshClick,
+                    onSimulateServerErrorChange = viewModel::onSimulateServerErrorChange
+                )
             }
             item(span = { GridItemSpan(maxLineSpan) }) {
                 TabRow(selected = state.tab, onSelected = viewModel::onTabSelected)
@@ -99,6 +122,9 @@ fun FeedScreen(
             }
             item(span = { GridItemSpan(maxLineSpan) }) {
                 CategoryChips(selected = state.category, onSelected = viewModel::onCategorySelected)
+            }
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                SyncBanner(sync = sync, onRetryClick = viewModel::onRefreshClick)
             }
             item(span = { GridItemSpan(maxLineSpan) }) {
                 SectionTitle(tab = state.tab, count = state.items.size)
@@ -128,7 +154,13 @@ fun FeedScreen(
 }
 
 @Composable
-private fun FeedHeader() {
+private fun FeedHeader(
+    sync: FeedSyncState,
+    onRefreshClick: () -> Unit,
+    onSimulateServerErrorChange: (Boolean) -> Unit
+) {
+    var menuOpen by remember { mutableStateOf(false) }
+
     Column {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Outlined.Eco, contentDescription = null, tint = DormGreen, modifier = Modifier.size(28.dp))
@@ -141,8 +173,77 @@ private fun FeedHeader() {
                     .weight(1f)
                     .semantics { heading() }
             )
+            when {
+                !sync.isOnline -> OfflineChip()
+                sync.status is SyncStatus.Loading -> CircularProgressIndicator(
+                    modifier = Modifier
+                        .padding(12.dp)
+                        .size(24.dp),
+                    strokeWidth = 2.dp
+                )
+                else -> IconButton(onClick = onRefreshClick) {
+                    Icon(Icons.Outlined.Refresh, contentDescription = "Refresh listings")
+                }
+            }
+            Box {
+                IconButton(onClick = { menuOpen = true }) {
+                    Icon(Icons.Outlined.MoreVert, contentDescription = "More options")
+                }
+                DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                    DropdownMenuItem(
+                        text = { Text("Demo: simulate server error") },
+                        leadingIcon = { Checkbox(checked = sync.simulateServerError, onCheckedChange = null) },
+                        onClick = {
+                            onSimulateServerErrorChange(!sync.simulateServerError)
+                            menuOpen = false
+                        }
+                    )
+                }
+            }
         }
         Text("Dormitory 5 · Łódź", style = MaterialTheme.typography.bodySmall, color = TextMuted)
+    }
+}
+
+/** Shows what is going on with the network: offline, loading, error or last update time. */
+@Composable
+private fun SyncBanner(sync: FeedSyncState, onRetryClick: () -> Unit) {
+    val lastUpdate = sync.lastSyncTime?.let { "Last updated at ${formatSyncTime(it)}." } ?: "Not updated from the server yet."
+    val status = sync.status
+
+    when {
+        !sync.isOnline -> InfoBanner(
+            icon = Icons.Outlined.CloudOff,
+            title = "You're currently offline",
+            text = "Showing listings saved on this phone. $lastUpdate"
+        )
+
+        status is SyncStatus.Loading -> Column {
+            LinearProgressIndicator(modifier = Modifier.fillMaxWidth(), color = DormGreen)
+            Text(
+                "Checking for new listings…",
+                style = MaterialTheme.typography.bodySmall,
+                color = TextMuted,
+                modifier = Modifier.padding(top = 4.dp)
+            )
+        }
+
+        status is SyncStatus.Error -> InfoBanner(
+            icon = Icons.Outlined.ErrorOutline,
+            title = "Couldn't load new listings",
+            text = "${status.message}. Showing saved listings. $lastUpdate",
+            containerColor = MaterialTheme.colorScheme.errorContainer,
+            contentColor = MaterialTheme.colorScheme.onErrorContainer,
+            action = {
+                TextButton(onClick = onRetryClick) { Text("Retry") }
+            }
+        )
+
+        else -> Text(
+            text = lastUpdate,
+            style = MaterialTheme.typography.bodySmall,
+            color = TextMuted
+        )
     }
 }
 

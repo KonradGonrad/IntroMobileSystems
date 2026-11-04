@@ -1,0 +1,60 @@
+{
+  "_note": "MOCK API - synthetic data for the DormSwap M2 demo. Not real people or items.",
+  "listings": [
+    {
+      "id": "101",
+      "title": "Electric kettle",
+      "description": "Working, 1.7 L capacity. Giving it away after moving out. Pickup on the 2nd floor.",
+      "category": "KITCHEN",
+      "condition": "GOOD",
+      "location": "Dorm 5 · Floor 2 · Room 215",
+      "ownerName": "Anna N.",
+      "status": "ACTIVE",
+      "createdAt": 1793700000000
+    },
+    {
+      "id": "102",
+      "title": "Denim jacket",
+      "description": "Size L, a bit too big for me. No holes.",
+      "category": "CLOTHES",
+      "condition": "VERY_GOOD",
+      "location": "Dorm 5 · Floor 4 · Room 409",
+      "ownerName": "Tomek",
+      "status": "ACTIVE",
+      "createdAt": 1793690000000
+    },
+    {
+      "id": "103",
+      "title": "Calculus I textbook",
+      "description": "Used for one semester, some notes with pencil.",
+      "category": "BOOKS",
+      "condition": "USED",
+      "location": "Dorm 5 · Floor 1 · Room 108",
+      "ownerName": "Zuzia",
+      "status": "ACTIVE",
+      "createdAt": 1793680000000
+    },
+    {
+      "id": "104",
+      "title": "Small bookshelf",
+      "description": "White, 3 shelves, 80 cm high. You need to carry it yourself.",
+      "category": "FURNITURE",
+      "condition": "GOOD",
+      "location": "Dorm 5 · Floor 3 · Room 301",
+      "ownerName": "Kacper",
+      "status": "RESERVED",
+      "createdAt": 1793670000000
+    },
+    {
+      "id": "105",
+      "title": "Frying pan 24 cm",
+      "description": "Non-stick, works on induction.",
+      "category": "KITCHEN",
+      "condition": "LIKE_NEW",
+      "location": "Dorm 5 · Floor 2 · Room 220",
+      "ownerName": "Julia",
+      "status": "ACTIVE",
+      "createdAt": 1793660000000
+    }
+  ]
+}
