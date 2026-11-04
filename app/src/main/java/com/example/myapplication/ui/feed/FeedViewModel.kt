@@ -13,6 +13,7 @@ import com.example.myapplication.DormSwapApp
 import com.example.myapplication.data.model.Category
 import com.example.myapplication.data.model.Item
 import com.example.myapplication.data.repository.ItemRepository
+import com.example.myapplication.data.repository.SyncStatus
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -25,6 +26,13 @@ data class FeedUiState(
     val tab: FeedTab = FeedTab.BROWSE,
     val category: Category? = null,
     val isLoading: Boolean = true
+)
+
+data class FeedSyncState(
+    val isOnline: Boolean = true,
+    val status: SyncStatus = SyncStatus.Idle,
+    val lastSyncTime: Long? = null,
+    val simulateServerError: Boolean = false
 )
 
 class FeedViewModel(private val repository: ItemRepository) : ViewModel() {
@@ -46,6 +54,16 @@ class FeedViewModel(private val repository: ItemRepository) : ViewModel() {
             )
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), FeedUiState())
 
+    val syncState: StateFlow<FeedSyncState> =
+        combine(
+            repository.isOnline,
+            repository.syncStatus,
+            repository.lastSyncTime,
+            repository.simulateServerError
+        ) { online, status, lastSync, simulateError ->
+            FeedSyncState(online, status, lastSync, simulateError)
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), FeedSyncState())
+
     fun onTabSelected(newTab: FeedTab) {
         tab.value = newTab
     }
@@ -56,6 +74,14 @@ class FeedViewModel(private val repository: ItemRepository) : ViewModel() {
 
     fun onQueryChange(newQuery: String) {
         query = newQuery
+    }
+
+    fun onRefreshClick() {
+        repository.requestSync()
+    }
+
+    fun onSimulateServerErrorChange(enabled: Boolean) {
+        repository.setSimulateServerError(enabled)
     }
 
     fun onToggleLike(id: String) {
