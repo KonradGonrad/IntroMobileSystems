@@ -17,6 +17,12 @@ As a result, usable items often end up in the trash at move-out,
 while new students spend money on things they could get free or
 cheaply from someone in the same building.
 
+## Milestones
+
+- **M1 – Problem and prototype:** [M1/README.md](M1/README.md)
+- **M2 – Working MVP:** [M2/README.md](M2/README.md) – build instructions, demo steps,
+  checklist of what works, mock/simulated parts and the architecture diagram.
+
 ## Project structure
 
 Application is based on MVVM model.

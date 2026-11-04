@@ -1,5 +1,6 @@
 package com.example.myapplication.ui.addItem
 
+import android.net.Uri
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -11,6 +12,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.myapplication.DormSwapApp
 import com.example.myapplication.data.model.Category
 import com.example.myapplication.data.model.Condition
+import com.example.myapplication.data.photo.PhotoStorage
 import com.example.myapplication.data.repository.ItemRepository
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -23,7 +25,17 @@ data class AddItemForm(
     val photoPath: String? = null
 )
 
-class AddItemViewModel(private val repository: ItemRepository) : ViewModel() {
+/** Messages shown when the camera can't be used (we then offer the gallery instead). */
+enum class PhotoProblem(val message: String) {
+    PERMISSION_DENIED("Camera permission was denied. You can choose a photo from the gallery instead, or allow the camera in Settings."),
+    NO_CAMERA("The camera is not available on this device. You can choose a photo from the gallery instead."),
+    SAVE_FAILED("Couldn't read this photo. Please try another one.")
+}
+
+class AddItemViewModel(
+    private val repository: ItemRepository,
+    private val photoStorage: PhotoStorage
+) : ViewModel() {
 
     val isOnline: StateFlow<Boolean> = repository.isOnline
 
@@ -38,6 +50,45 @@ class AddItemViewModel(private val repository: ItemRepository) : ViewModel() {
 
     var isSaved by mutableStateOf(false)
         private set
+
+    var isProcessingPhoto by mutableStateOf(false)
+        private set
+
+    var photoProblem by mutableStateOf<PhotoProblem?>(null)
+        private set
+
+    fun createCameraUri(): Uri = photoStorage.createCameraUri()
+
+    /** Called with the picture from the camera or from the gallery. */
+    fun onPhotoSelected(uri: Uri) {
+        photoProblem = null
+        isProcessingPhoto = true
+        viewModelScope.launch {
+            val path = photoStorage.savePhoto(uri)
+            if (path != null) {
+                form = form.copy(photoPath = path)
+            } else {
+                photoProblem = PhotoProblem.SAVE_FAILED
+            }
+            isProcessingPhoto = false
+        }
+    }
+
+    fun onRemovePhoto() {
+        form = form.copy(photoPath = null)
+    }
+
+    fun onCameraPermissionDenied() {
+        photoProblem = PhotoProblem.PERMISSION_DENIED
+    }
+
+    fun onCameraUnavailable() {
+        photoProblem = PhotoProblem.NO_CAMERA
+    }
+
+    fun onPhotoProblemDismissed() {
+        photoProblem = null
+    }
 
     fun onTitleChange(value: String) {
         form = form.copy(title = value)
@@ -60,7 +111,7 @@ class AddItemViewModel(private val repository: ItemRepository) : ViewModel() {
     }
 
     fun onPublishClick() {
-        if (isSaving) return
+        if (isSaving || isProcessingPhoto) return
 
         errors = ListingValidator.validate(form.title, form.description, form.category, form.condition)
         if (errors.isNotEmpty()) return
@@ -83,7 +134,7 @@ class AddItemViewModel(private val repository: ItemRepository) : ViewModel() {
         val Factory = viewModelFactory {
             initializer {
                 val app = this[APPLICATION_KEY] as DormSwapApp
-                AddItemViewModel(app.repository)
+                AddItemViewModel(app.repository, app.photoStorage)
             }
         }
     }
