@@ -1,5 +1,7 @@
 package com.example.myapplication.ui.components
 
+import android.graphics.BitmapFactory
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,10 +24,15 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.myapplication.core.theme.CardGrey
@@ -35,6 +42,8 @@ import com.example.myapplication.core.theme.TextMuted
 import com.example.myapplication.data.model.Category
 import com.example.myapplication.data.model.Condition
 import com.example.myapplication.data.model.ListingStatus
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /** Small grey pill shown in the top right corner when there is no internet. */
 @Composable
@@ -103,7 +112,8 @@ fun categoryIcon(category: Category): ImageVector = when (category) {
 }
 
 /**
- * Photo of the item. Items without a photo get a grey box with the category icon.
+ * Photo of the item. Items without a photo (or if the file is missing)
+ * get a grey box with the category icon.
  */
 @Composable
 fun ItemPhoto(
@@ -112,16 +122,33 @@ fun ItemPhoto(
     modifier: Modifier = Modifier,
     contentDescription: String? = null
 ) {
+    // load the file in the background so scrolling stays smooth
+    val bitmap by produceState<ImageBitmap?>(initialValue = null, photoPath) {
+        value = photoPath?.let { path ->
+            withContext(Dispatchers.IO) { BitmapFactory.decodeFile(path)?.asImageBitmap() }
+        }
+    }
+
     Box(
         modifier = modifier.background(CardGrey),
         contentAlignment = Alignment.Center
     ) {
-        Icon(
-            imageVector = categoryIcon(category),
-            contentDescription = contentDescription,
-            tint = TextMuted,
-            modifier = Modifier.size(48.dp)
-        )
+        val image = bitmap
+        if (image != null) {
+            Image(
+                bitmap = image,
+                contentDescription = contentDescription,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.matchParentSize()
+            )
+        } else {
+            Icon(
+                imageVector = categoryIcon(category),
+                contentDescription = contentDescription,
+                tint = TextMuted,
+                modifier = Modifier.size(48.dp)
+            )
+        }
     }
 }
 
