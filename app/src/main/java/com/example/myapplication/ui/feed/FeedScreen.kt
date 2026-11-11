@@ -24,6 +24,7 @@ import androidx.compose.material.icons.outlined.Clear
 import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.material.icons.outlined.Eco
 import androidx.compose.material.icons.outlined.ErrorOutline
+import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Search
@@ -70,6 +71,7 @@ import com.example.myapplication.ui.components.formatSyncTime
 @Composable
 fun FeedScreen(
     onAddItemClick: () -> Unit,
+    onAccountClick: () -> Unit,
     onItemClick: (String) -> Unit,
     viewModel: FeedViewModel = viewModel(factory = FeedViewModel.Factory)
 ) {
@@ -110,6 +112,7 @@ fun FeedScreen(
             item(span = { GridItemSpan(maxLineSpan) }) {
                 FeedHeader(
                     sync = sync,
+                    onAccountClick = onAccountClick,
                     onRefreshClick = viewModel::onRefreshClick,
                     onSimulateServerErrorChange = viewModel::onSimulateServerErrorChange
                 )
@@ -156,6 +159,7 @@ fun FeedScreen(
 @Composable
 private fun FeedHeader(
     sync: FeedSyncState,
+    onAccountClick: () -> Unit,
     onRefreshClick: () -> Unit,
     onSimulateServerErrorChange: (Boolean) -> Unit
 ) {
@@ -184,6 +188,9 @@ private fun FeedHeader(
                 else -> IconButton(onClick = onRefreshClick) {
                     Icon(Icons.Outlined.Refresh, contentDescription = "Refresh listings")
                 }
+            }
+            IconButton(onClick = onAccountClick) {
+                Icon(Icons.Outlined.AccountCircle, contentDescription = "My account", tint = DormGreen)
             }
             Box {
                 IconButton(onClick = { menuOpen = true }) {

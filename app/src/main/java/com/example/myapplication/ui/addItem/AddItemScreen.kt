@@ -26,10 +26,7 @@ import androidx.compose.material.icons.outlined.CloudUpload
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
@@ -42,9 +39,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -136,7 +130,7 @@ fun AddItemScreen(
             }
 
             FormSection("Category") {
-                CategoryDropdown(
+                CategoryChips(
                     selected = form.category,
                     error = errors[FormField.CATEGORY],
                     onSelected = viewModel::onCategoryChange
@@ -195,35 +189,26 @@ private fun FormSection(label: String, content: @Composable () -> Unit) {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun CategoryDropdown(selected: Category?, error: String?, onSelected: (Category) -> Unit) {
-    var expanded by remember { mutableStateOf(false) }
-
-    ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {
-        OutlinedTextField(
-            value = selected?.label ?: "",
-            onValueChange = {},
-            readOnly = true,
-            placeholder = { Text("Choose a category") },
-            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-            isError = error != null,
-            supportingText = { error?.let { Text(it) } },
-            shape = RoundedCornerShape(12.dp),
-            modifier = Modifier
-                .menuAnchor()
-                .fillMaxWidth()
-        )
-        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+private fun CategoryChips(selected: Category?, error: String?, onSelected: (Category) -> Unit) {
+    Column {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Category.entries.forEach { category ->
-                DropdownMenuItem(
-                    text = { Text(category.label) },
-                    onClick = {
-                        onSelected(category)
-                        expanded = false
-                    }
+                FilterChip(
+                    selected = category == selected,
+                    onClick = { onSelected(category) },
+                    label = { Text(category.label) },
+                    shape = RoundedCornerShape(50),
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = DormGreen,
+                        selectedLabelColor = Color.White
+                    )
                 )
             }
+        }
+        if (error != null) {
+            Text(error, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
         }
     }
 }
