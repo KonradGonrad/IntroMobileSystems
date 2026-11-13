@@ -49,3 +49,4 @@ Thumbs.db
 *.keystore
 # Gradle wrapper jar is needed to run ./gradlew
 !gradle/wrapper/gradle-wrapper.jar
+org.md
