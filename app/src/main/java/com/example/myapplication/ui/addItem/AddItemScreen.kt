@@ -57,6 +57,7 @@ import com.example.myapplication.data.model.Category
 import com.example.myapplication.data.model.Condition
 import com.example.myapplication.ui.components.InfoBanner
 import com.example.myapplication.ui.components.OfflineChip
+import com.example.myapplication.ui.components.categoryIcon
 
 @Composable
 fun AddItemScreen(
@@ -189,26 +190,42 @@ private fun FormSection(label: String, content: @Composable () -> Unit) {
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
 private fun CategoryChips(selected: Category?, error: String?, onSelected: (Category) -> Unit) {
     Column {
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
             Category.entries.forEach { category ->
                 FilterChip(
                     selected = category == selected,
                     onClick = { onSelected(category) },
                     label = { Text(category.label) },
-                    shape = RoundedCornerShape(50),
+                    leadingIcon = {
+                        Icon(
+                            imageVector = categoryIcon(category),
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    },
+                    shape = RoundedCornerShape(12.dp),
                     colors = FilterChipDefaults.filterChipColors(
                         selectedContainerColor = DormGreen,
-                        selectedLabelColor = Color.White
+                        selectedLabelColor = Color.White,
+                        selectedLeadingIconColor = Color.White
                     )
                 )
             }
         }
         if (error != null) {
-            Text(error, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+            Text(
+                text = error,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(top = 4.dp)
+            )
         }
     }
 }
