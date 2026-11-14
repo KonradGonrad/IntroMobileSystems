@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
@@ -14,8 +16,18 @@ android {
         applicationId = "com.example.myapplication"
         minSdk = 24
         targetSdk = 37
-        versionCode = 2
-        versionName = "0.2-m2"
+        versionCode = 3
+        versionName = "0.3-m3"
+
+        val config = Properties().apply {
+            val file = rootProject.file("local.properties")
+            if (file.exists()) file.inputStream().use { load(it) }
+        }
+        fun configString(name: String): String = "\"" +
+            (System.getenv(name) ?: config.getProperty(name, ""))
+                .replace("\\", "\\\\").replace("\"", "\\\"") + "\""
+        buildConfigField("String", "SUPABASE_URL", configString("SUPABASE_URL"))
+        buildConfigField("String", "SUPABASE_ANON_KEY", configString("SUPABASE_ANON_KEY"))
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -35,6 +47,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
