@@ -1,6 +1,8 @@
 package com.example.myapplication.core.navigation
 
 import androidx.compose.runtime.Composable
+import kotlinx.coroutines.launch
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -24,27 +26,19 @@ object Routes {
 
 @Composable
 fun AppNavigation() {
+    val app = androidx.compose.ui.platform.LocalContext.current.applicationContext as com.example.myapplication.DormSwapApp
+    val user = app.auth.user.collectAsStateWithLifecycle().value
+    if (user == null) { LoginScreen(); return }
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
     val navController = rememberNavController()
 
-    NavHost(navController = navController, startDestination = Routes.LOGIN) {
-
-        composable(Routes.LOGIN) {
-            LoginScreen(onLoggedIn = {
-                navController.navigate(Routes.FEED) {
-                    popUpTo(Routes.LOGIN) { inclusive = true }
-                    launchSingleTop = true
-                }
-            })
-        }
+    NavHost(navController = navController, startDestination = Routes.FEED) {
 
         composable(Routes.ACCOUNT) {
             AccountScreen(
                 onBackClick = { navController.popBackStack() },
                 onLogout = {
-                    navController.navigate(Routes.LOGIN) {
-                        popUpTo(navController.graph.id) { inclusive = true }
-                        launchSingleTop = true
-                    }
+                    scope.launch { app.auth.signOut() }
                 }
             )
         }
