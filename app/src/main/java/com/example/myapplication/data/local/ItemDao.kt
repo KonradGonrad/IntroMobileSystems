@@ -27,6 +27,12 @@ interface ItemDao {
     @Query("SELECT COUNT(*) FROM items")
     suspend fun count(): Int
 
+    @Query("DELETE FROM items WHERE id = :id")
+    suspend fun delete(id: String)
+
+    @Query("DELETE FROM items")
+    suspend fun clear()
+
     @Upsert
     suspend fun upsert(item: Item)
 

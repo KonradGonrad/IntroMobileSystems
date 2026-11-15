@@ -22,6 +22,8 @@ import com.example.myapplication.core.theme.TextMuted
 
 @Composable
 fun AccountScreen(onBackClick: () -> Unit, onLogout: () -> Unit) {
+    val app = androidx.compose.ui.platform.LocalContext.current.applicationContext as com.example.myapplication.DormSwapApp
+    val user = app.auth.user.value
     Scaffold(
         topBar = {
             Row(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 4.dp, vertical = 8.dp),
@@ -41,8 +43,8 @@ fun AccountScreen(onBackClick: () -> Unit, onLogout: () -> Unit) {
                     Icon(Icons.Outlined.AccountCircle, contentDescription = null,
                         tint = DormGreen, modifier = Modifier.size(72.dp))
                     Spacer(Modifier.height(12.dp))
-                    Text("admin", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                    Text("Demo account", color = TextMuted)
+                    Text(user?.name.orEmpty(), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                    Text(user?.email.orEmpty(), color = TextMuted)
                     Spacer(Modifier.height(8.dp))
                     Text("Dormitory 5 · Łódź", style = MaterialTheme.typography.bodyMedium, color = TextMuted)
                 }

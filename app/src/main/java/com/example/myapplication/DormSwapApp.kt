@@ -28,8 +28,14 @@ class DormSwapApp : Application() {
     lateinit var photoStorage: PhotoStorage
         private set
 
+    lateinit var auth: com.example.myapplication.data.auth.AuthRepository
+        private set
+
     override fun onCreate() {
         super.onCreate()
+        auth = com.example.myapplication.data.auth.AuthRepository(
+            com.example.myapplication.data.remote.SupabaseClient(),
+            com.example.myapplication.data.auth.SessionStore(this))
         val database = AppDatabase.create(this)
         val prefs = AppPreferences(this)
         val networkMonitor = NetworkMonitor(this)
