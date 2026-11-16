@@ -1,6 +1,7 @@
 package com.example.myapplication.core.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.foundation.layout.fillMaxSize
 import kotlinx.coroutines.launch
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavType
@@ -29,6 +30,13 @@ fun AppNavigation() {
     val app = androidx.compose.ui.platform.LocalContext.current.applicationContext as com.example.myapplication.DormSwapApp
     val user = app.auth.user.collectAsStateWithLifecycle().value
     if (user == null) { LoginScreen(); return }
+    val ready = app.readyUser.collectAsStateWithLifecycle().value
+    if (ready != user.id) {
+        androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.fillMaxSize(), contentAlignment=androidx.compose.ui.Alignment.Center) {
+            androidx.compose.material3.CircularProgressIndicator()
+        }
+        return
+    }
     val scope = androidx.compose.runtime.rememberCoroutineScope()
     val navController = rememberNavController()
 
