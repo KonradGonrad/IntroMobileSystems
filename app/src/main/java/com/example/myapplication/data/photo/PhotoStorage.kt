@@ -9,6 +9,7 @@ import android.net.Uri
 import androidx.core.content.FileProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.io.IOException
 import java.io.File
 import java.io.FileOutputStream
 import java.util.UUID
@@ -29,6 +30,7 @@ class PhotoStorage(private val context: Context) {
 
     /** Returns the path of the saved JPEG, or null if the picture can't be read. */
     suspend fun savePhoto(source: Uri): String? = withContext(Dispatchers.IO) {
+        try {
         val resolver = context.contentResolver
 
         // 1. read only the size of the picture
@@ -50,9 +52,16 @@ class PhotoStorage(private val context: Context) {
         }
 
         // 4. camera photos can be saved sideways, the EXIF tag says how to rotate them
-        val rotation = resolver.openInputStream(source)?.use { readRotation(ExifInterface(it)) } ?: 0
-        if (rotation != 0) {
-            val matrix = Matrix().apply { postRotate(rotation.toFloat()) }
+        val orientation = resolver.openInputStream(source)?.use {
+            try { ExifInterface(it).getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL) }
+            catch (_: IOException) { ExifInterface.ORIENTATION_NORMAL }
+        } ?: ExifInterface.ORIENTATION_NORMAL
+        val (rotation, mirrored) = PhotoUtils.orientationTransform(orientation)
+        if (rotation != 0 || mirrored) {
+            val matrix = Matrix().apply {
+                postRotate(rotation.toFloat())
+                if(mirrored) postScale(-1f, 1f)
+            }
             bitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
         }
 
@@ -61,15 +70,10 @@ class PhotoStorage(private val context: Context) {
         val file = File(dir, "${UUID.randomUUID()}.jpg")
         FileOutputStream(file).use { bitmap.compress(Bitmap.CompressFormat.JPEG, 80, it) }
         file.absolutePath
+        } catch (_: IOException) { null }
+        catch (_: SecurityException) { null }
+        catch (_: IllegalArgumentException) { null }
     }
-
-    private fun readRotation(exif: ExifInterface): Int =
-        when (exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)) {
-            ExifInterface.ORIENTATION_ROTATE_90 -> 90
-            ExifInterface.ORIENTATION_ROTATE_180 -> 180
-            ExifInterface.ORIENTATION_ROTATE_270 -> 270
-            else -> 0
-        }
 
     private companion object {
         const val MAX_SIZE = 1280
