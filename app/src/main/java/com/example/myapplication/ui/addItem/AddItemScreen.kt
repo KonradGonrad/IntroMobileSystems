@@ -75,10 +75,11 @@ fun AddItemScreen(
     }
 
     Scaffold(
-        topBar = { AddItemTopBar(isOnline, onBackClick) },
+        topBar = { AddItemTopBar(isOnline, onBackClick, viewModel.editId != null) },
         bottomBar = {
             PublishBar(
-                isSaving = viewModel.isSaving,
+                isSaving = viewModel.isSaving || viewModel.loading,
+                editing = viewModel.editId != null,
                 errorCount = errors.size,
                 onPublishClick = viewModel::onPublishClick
             )
@@ -102,6 +103,7 @@ fun AddItemScreen(
                 )
             }
 
+            viewModel.saveError?.let { Text(it, color=MaterialTheme.colorScheme.error) }
             PhotoSection(viewModel = viewModel, category = form.category)
 
             FormSection("Item title") {
@@ -152,7 +154,7 @@ fun AddItemScreen(
 }
 
 @Composable
-private fun AddItemTopBar(isOnline: Boolean, onBackClick: () -> Unit) {
+private fun AddItemTopBar(isOnline: Boolean, onBackClick: () -> Unit, editing: Boolean) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -164,7 +166,7 @@ private fun AddItemTopBar(isOnline: Boolean, onBackClick: () -> Unit) {
             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Go back")
         }
         Text(
-            text = "Add listing",
+            text = if(editing) "Edit listing" else "Add listing",
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold,
             modifier = Modifier
@@ -255,7 +257,7 @@ private fun ConditionChips(selected: Condition?, error: String?, onSelected: (Co
 }
 
 @Composable
-private fun PublishBar(isSaving: Boolean, errorCount: Int, onPublishClick: () -> Unit) {
+private fun PublishBar(editing: Boolean, isSaving: Boolean, errorCount: Int, onPublishClick: () -> Unit) {
     Surface(shadowElevation = 8.dp) {
         Column(
             modifier = Modifier
@@ -285,7 +287,7 @@ private fun PublishBar(isSaving: Boolean, errorCount: Int, onPublishClick: () ->
                     CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp)
                 } else {
                     Icon(Icons.Outlined.CloudUpload, contentDescription = null)
-                    Text("Publish", modifier = Modifier.padding(start = 8.dp))
+                    Text(if(editing) "Save changes" else "Publish", modifier = Modifier.padding(start = 8.dp))
                 }
             }
             Text(

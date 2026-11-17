@@ -1,6 +1,10 @@
 package com.example.myapplication.ui.addItem
 
 import android.net.Uri
+import androidx.lifecycle.SavedStateHandle
+import androidx.lifecycle.createSavedStateHandle
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.CancellationException
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -34,9 +38,13 @@ enum class PhotoProblem(val message: String) {
 
 class AddItemViewModel(
     private val repository: ItemRepository,
-    private val photoStorage: PhotoStorage
+    private val photoStorage: PhotoStorage,
+    savedState: SavedStateHandle
 ) : ViewModel() {
 
+    val editId: String? = savedState["editId"]
+    var saveError by mutableStateOf<String?>(null); private set
+    var loading by mutableStateOf(editId != null); private set
     val isOnline: StateFlow<Boolean> = repository.isOnline
 
     var form by mutableStateOf(AddItemForm())
@@ -56,6 +64,15 @@ class AddItemViewModel(
 
     var photoProblem by mutableStateOf<PhotoProblem?>(null)
         private set
+
+    init {
+        if(editId!=null) viewModelScope.launch {
+            val item=repository.item(editId).first()
+            if(item!=null) form=AddItemForm(item.title,item.description,item.category,item.condition,item.photoPath)
+            else saveError="Listing not found."
+            loading=false
+        }
+    }
 
     fun createCameraUri(): Uri = photoStorage.createCameraUri()
 
@@ -111,22 +128,20 @@ class AddItemViewModel(
     }
 
     fun onPublishClick() {
-        if (isSaving || isProcessingPhoto) return
+        if (isSaving || isProcessingPhoto || loading) return
 
         errors = ListingValidator.validate(form.title, form.description, form.category, form.condition)
         if (errors.isNotEmpty()) return
 
         isSaving = true
         viewModelScope.launch {
-            repository.addListing(
-                title = form.title,
-                description = form.description,
-                category = form.category!!,
-                condition = form.condition!!,
-                photoPath = form.photoPath
-            )
-            isSaving = false
-            isSaved = true
+            try {
+                if(editId==null) repository.addListing(form.title,form.description,form.category!!,form.condition!!,form.photoPath)
+                else repository.editListing(editId,form.title,form.description,form.category!!,form.condition!!,form.photoPath)
+                isSaved=true
+            } catch(e: CancellationException) { throw e }
+            catch(e: Exception) { saveError=e.message ?: "Could not save listing." }
+            finally { isSaving=false }
         }
     }
 
@@ -134,7 +149,7 @@ class AddItemViewModel(
         val Factory = viewModelFactory {
             initializer {
                 val app = this[APPLICATION_KEY] as DormSwapApp
-                AddItemViewModel(app.repository, app.photoStorage)
+                AddItemViewModel(app.repository, app.photoStorage, createSavedStateHandle())
             }
         }
     }

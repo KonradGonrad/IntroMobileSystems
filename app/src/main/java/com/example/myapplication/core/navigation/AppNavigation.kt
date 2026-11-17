@@ -9,6 +9,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.example.myapplication.ui.chat.ChatScreen
 import com.example.myapplication.ui.account.AccountScreen
 import com.example.myapplication.ui.login.LoginScreen
 import com.example.myapplication.ui.addItem.AddItemScreen
@@ -53,12 +54,20 @@ fun AppNavigation() {
 
         composable(Routes.FEED) {
             FeedScreen(
+                onChatsClick = { navController.navigate("chats") },
                 onAccountClick = { navController.navigate(Routes.ACCOUNT) },
                 onAddItemClick = { navController.navigate(Routes.ADD_ITEM) },
                 onItemClick = { id -> navController.navigate(Routes.itemDetail(id)) }
             )
         }
 
+        composable("chats") { ChatScreen(onBack={navController.popBackStack()},onOpen={navController.navigate("chat/$it")}) }
+        composable("chat/{conversationId}",arguments=listOf(navArgument("conversationId"){type=NavType.StringType})) {
+            ChatScreen(onBack={navController.popBackStack()},onOpen={})
+        }
+        composable("edit/{editId}",arguments=listOf(navArgument("editId"){type=NavType.StringType})) {
+            AddItemScreen(onBackClick={navController.popBackStack()},onSaved={navController.popBackStack()})
+        }
         composable(Routes.ADD_ITEM) {
             AddItemScreen(
                 onBackClick = { navController.popBackStack() },
@@ -70,7 +79,9 @@ fun AppNavigation() {
             route = Routes.ITEM_DETAIL,
             arguments = listOf(navArgument("itemId") { type = NavType.StringType })
         ) {
-            ItemDetailScreen(onBackClick = { navController.popBackStack() })
+            ItemDetailScreen(onBackClick = { navController.popBackStack() },
+                onEdit = { id -> navController.navigate("edit/$id") },
+                onChat = { id -> navController.navigate("chat/$id") })
         }
     }
 }
