@@ -34,7 +34,9 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -62,11 +64,16 @@ import com.example.myapplication.ui.feed.LikeButton
 @Composable
 fun ItemDetailScreen(
     onBackClick: () -> Unit,
+    onEdit: (String) -> Unit,
+    onChat: (String) -> Unit,
     viewModel: ItemDetailViewModel = viewModel(factory = ItemDetailViewModel.Factory)
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val isOnline by viewModel.isOnline.collectAsStateWithLifecycle()
     val lastSyncTime by viewModel.lastSyncTime.collectAsStateWithLifecycle()
+
+    LaunchedEffect(viewModel.chatId) { viewModel.chatId?.let { viewModel.clearChat(); onChat(it) } }
+    LaunchedEffect(viewModel.deleted) { if(viewModel.deleted) onBackClick() }
 
     when (val s = state) {
         DetailUiState.Loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -90,7 +97,9 @@ fun ItemDetailScreen(
             onBackClick = onBackClick,
             onReserveClick = viewModel::onReserveClick,
             onCancelClick = viewModel::onCancelReservationClick,
-            onToggleLike = viewModel::onToggleLike
+            onToggleLike = viewModel::onToggleLike,
+            onEdit = { onEdit(s.item.id) }, onChat = viewModel::startChat, onDelete=viewModel::delete,
+            error=viewModel.actionError, busy=viewModel.busy
         )
     }
 }
@@ -103,8 +112,15 @@ private fun ItemDetailContent(
     onBackClick: () -> Unit,
     onReserveClick: () -> Unit,
     onCancelClick: () -> Unit,
-    onToggleLike: () -> Unit
+    onToggleLike: () -> Unit,
+    onEdit: () -> Unit, onChat: () -> Unit, onDelete: () -> Unit,
+    error: String?, busy: Boolean
 ) {
+    var confirmDelete by remember { mutableStateOf(false) }
+    if(confirmDelete) AlertDialog(onDismissRequest={confirmDelete=false},title={Text("Delete listing?")},
+        text={Text("It will disappear from the feed. Existing conversations will remain.")},
+        confirmButton={TextButton(onClick={confirmDelete=false; onDelete()}){Text("Delete")}},
+        dismissButton={TextButton(onClick={confirmDelete=false}){Text("Keep listing")}})
     Scaffold(
         bottomBar = { ReserveBar(item, lastSyncTime, onReserveClick, onCancelClick) }
     ) { padding ->
@@ -188,6 +204,13 @@ private fun ItemDetailContent(
 
                 Spacer(modifier = Modifier.height(20.dp))
                 OwnerRow(item.ownerName)
+                error?.let { Text(it,color=MaterialTheme.colorScheme.error) }
+                if(item.isMine) {
+                    OutlinedButton(onClick=onEdit,enabled=item.status==ListingStatus.ACTIVE && !busy,modifier=Modifier.fillMaxWidth()) { Text("Edit listing") }
+                    TextButton(onClick={confirmDelete=true},enabled=!busy,modifier=Modifier.fillMaxWidth()) { Text("Delete listing") }
+                } else {
+                    Button(onClick=onChat,enabled=!busy,modifier=Modifier.fillMaxWidth().padding(top=12.dp)) { Text("Message owner") }
+                }
             }
         }
     }
@@ -238,11 +261,11 @@ private fun ReserveBar(item: Item, lastSyncTime: Long?, onReserveClick: () -> Un
                 item.reservedByMe -> {
                     InfoBanner(
                         icon = Icons.Outlined.BookmarkAdded,
-                        title = "Reserved by you",
+                        title = if(item.pendingSync) "Reservation awaiting confirmation" else "Reserved by you",
                         text = if (item.pendingSync) {
                             "Saved on this phone. It will be sent when you're online."
                         } else {
-                            "Request sent (simulated, no real server yet). The owner will confirm the reservation."
+                            "Reservation confirmed by the server. Message the owner to arrange pickup."
                         }
                     )
                     OutlinedButton(
@@ -259,7 +282,7 @@ private fun ReserveBar(item: Item, lastSyncTime: Long?, onReserveClick: () -> Un
                 item.status == ListingStatus.ACTIVE -> {
                     InfoBanner(
                         icon = Icons.Outlined.CloudOff,
-                        text = "Request will be saved locally and sent once connected. The owner will confirm the reservation."
+                        text = "The server confirms availability. Offline requests wait for a connection and may be rejected if someone reserves first."
                     )
                     Button(
                         onClick = onReserveClick,

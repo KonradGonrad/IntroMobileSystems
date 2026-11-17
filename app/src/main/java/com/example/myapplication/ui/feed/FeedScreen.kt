@@ -70,6 +70,7 @@ import com.example.myapplication.ui.components.formatSyncTime
 
 @Composable
 fun FeedScreen(
+    onChatsClick: () -> Unit,
     onAddItemClick: () -> Unit,
     onAccountClick: () -> Unit,
     onItemClick: (String) -> Unit,
@@ -116,6 +117,9 @@ fun FeedScreen(
                     onRefreshClick = viewModel::onRefreshClick,
                     onSimulateServerErrorChange = viewModel::onSimulateServerErrorChange
                 )
+            }
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                TextButton(onClick=onChatsClick) { Text("Messages") }
             }
             item(span = { GridItemSpan(maxLineSpan) }) {
                 TabRow(selected = state.tab, onSelected = viewModel::onTabSelected)

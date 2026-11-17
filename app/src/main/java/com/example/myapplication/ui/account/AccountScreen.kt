@@ -9,7 +9,9 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.heading
@@ -24,6 +26,8 @@ import com.example.myapplication.core.theme.TextMuted
 fun AccountScreen(onBackClick: () -> Unit, onLogout: () -> Unit) {
     val app = androidx.compose.ui.platform.LocalContext.current.applicationContext as com.example.myapplication.DormSwapApp
     val user = app.auth.user.value
+    val failures by app.repository.failedActions.collectAsStateWithLifecycle(initialValue=emptyList())
+    val scope=rememberCoroutineScope()
     Scaffold(
         topBar = {
             Row(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 4.dp, vertical = 8.dp),
@@ -49,6 +53,11 @@ fun AccountScreen(onBackClick: () -> Unit, onLogout: () -> Unit) {
                     Text("Dormitory 5 · Łódź", style = MaterialTheme.typography.bodyMedium, color = TextMuted)
                 }
             }
+            failures.forEach { failure ->
+                Text("${failure.kind}: ${failure.error}",color=MaterialTheme.colorScheme.error)
+                TextButton(onClick={scope.launch { app.repository.dismissFailure(failure.id) }}) { Text("Dismiss rejected change") }
+            }
+            Text("Unsynced changes stay on this device for this account. Sign back in to send them.",style=MaterialTheme.typography.bodySmall)
             OutlinedButton(onClick = onLogout, shape = RoundedCornerShape(16.dp),
                 modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)) {
                 Icon(Icons.AutoMirrored.Outlined.Logout, contentDescription = null)
