@@ -203,6 +203,7 @@ private fun ItemDetailContent(
                 )
 
                 Spacer(modifier = Modifier.height(20.dp))
+                if(item.pendingSync) Text("Local change · Awaiting sync. Rejected changes appear in Account.",color=TextMuted)
                 OwnerRow(item.ownerName)
                 error?.let { Text(it,color=MaterialTheme.colorScheme.error) }
                 if(item.isMine) {

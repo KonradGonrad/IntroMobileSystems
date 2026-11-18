@@ -86,7 +86,7 @@ fun FeedScreen(
                 tonalElevation = 0.dp,
                 actions = {
                     Text(
-                        text = "Add things that you don't need",
+                        text = "Share an item",
                         style = MaterialTheme.typography.bodyMedium,
                         color = DormGreen,
                         fontWeight = FontWeight.SemiBold,
@@ -102,7 +102,7 @@ fun FeedScreen(
         }
     ) { padding ->
         LazyVerticalGrid(
-            columns = GridCells.Fixed(2),
+            columns = GridCells.Adaptive((160 * androidx.compose.ui.platform.LocalDensity.current.fontScale.coerceAtMost(2f)).dp),
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding),

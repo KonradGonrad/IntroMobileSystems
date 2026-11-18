@@ -28,6 +28,13 @@ fun AccountScreen(onBackClick: () -> Unit, onLogout: () -> Unit) {
     val user = app.auth.user.value
     val failures by app.repository.failedActions.collectAsStateWithLifecycle(initialValue=emptyList())
     val scope=rememberCoroutineScope()
+    var discardId by remember { mutableStateOf<String?>(null) }
+    discardId?.let { id ->
+        AlertDialog(onDismissRequest={discardId=null},title={Text("Discard rejected change?")},
+            text={Text("This removes the local attempt. Any confirmed server data will be downloaded again.")},
+            confirmButton={TextButton(onClick={discardId=null; scope.launch { app.repository.dismissFailure(id) }}) { Text("Discard") }},
+            dismissButton={TextButton(onClick={discardId=null}) { Text("Keep") }})
+    }
     Scaffold(
         topBar = {
             Row(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 4.dp, vertical = 8.dp),
@@ -55,7 +62,8 @@ fun AccountScreen(onBackClick: () -> Unit, onLogout: () -> Unit) {
             }
             failures.forEach { failure ->
                 Text("${failure.kind}: ${failure.error}",color=MaterialTheme.colorScheme.error)
-                TextButton(onClick={scope.launch { app.repository.dismissFailure(failure.id) }}) { Text("Dismiss rejected change") }
+                TextButton(onClick={scope.launch { app.repository.retryFailure(failure.id) }}) { Text("Retry change") }
+                TextButton(onClick={discardId=failure.id}) { Text("Discard change") }
             }
             Text("Unsynced changes stay on this device for this account. Sign back in to send them.",style=MaterialTheme.typography.bodySmall)
             OutlinedButton(onClick = onLogout, shape = RoundedCornerShape(16.dp),
