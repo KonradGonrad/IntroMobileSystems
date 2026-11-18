@@ -14,6 +14,7 @@ object ListingValidator {
     const val TITLE_MIN = 3
     const val TITLE_MAX = 60
     const val DESCRIPTION_MIN = 10
+    const val DESCRIPTION_MAX = 2000
 
     fun validate(
         title: String,
@@ -37,6 +38,10 @@ object ListingValidator {
             errors[FormField.DESCRIPTION] = "Description is required"
         } else if (cleanDescription.length < DESCRIPTION_MIN) {
             errors[FormField.DESCRIPTION] = "Write at least $DESCRIPTION_MIN characters"
+        }
+
+        if (cleanDescription.length > DESCRIPTION_MAX) {
+            errors[FormField.DESCRIPTION] = "Description can have at most $DESCRIPTION_MAX characters"
         }
 
         if (category == null) {

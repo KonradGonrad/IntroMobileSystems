@@ -38,6 +38,7 @@ fun AppNavigation() {
         }
         return
     }
+    androidx.compose.runtime.key(user.id) {
     val scope = androidx.compose.runtime.rememberCoroutineScope()
     val navController = rememberNavController()
 
@@ -83,5 +84,6 @@ fun AppNavigation() {
                 onEdit = { id -> navController.navigate("edit/$id") },
                 onChat = { id -> navController.navigate("chat/$id") })
         }
+    }
     }
 }
