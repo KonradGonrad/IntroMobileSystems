@@ -27,7 +27,7 @@ create table public.listings (
  description text not null check(length(btrim(description)) between 10 and 2000),
  category text not null check(category in ('CLOTHES','ELECTRONICS','BOOKS','KITCHEN','FURNITURE','OTHER')),
  condition text not null check(condition in ('NEW','LIKE_NEW','VERY_GOOD','GOOD','USED')),
- photo_path text, reserved_by uuid references public.profiles(id), deleted boolean not null default false,
+ photo_path text check(photo_path is null or photo_path ~ '^[a-fA-F0-9-]{36}/[a-f0-9]{64}\.jpg$'), reserved_by uuid references public.profiles(id), deleted boolean not null default false,
  created_at timestamptz not null default now(), check(reserved_by is distinct from owner_id)
 );
 create table public.likes (

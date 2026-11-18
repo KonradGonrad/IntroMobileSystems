@@ -4,6 +4,18 @@ import com.example.myapplication.data.model.Item
 import com.example.myapplication.data.model.ListingStatus
 
 object SyncHelper {
+    /** Real server state wins after confirmation/rejection; only unsent edits protect local data. */
+    fun mergeCloudItems(server: List<Item>, local: List<Item>, pendingIds: Set<String>,
+                        failedDraftIds: Set<String>, deletingIds: Set<String>): List<Item> {
+        val byId=local.associateBy { it.id }
+        val serverIds=server.map { it.id }.toSet()
+        val merged=server.map { if(it.id in pendingIds) byId[it.id] ?: it else it } +
+            local.filter { (it.id in pendingIds || it.id in failedDraftIds) && it.id !in serverIds }
+        return merged.filter { it.id !in deletingIds }
+    }
+
+    // Kept for the historical M2 mock merge tests; not used by M3.
+
 
     /**
      * Decides which downloaded items should be written to the database.

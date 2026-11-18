@@ -15,7 +15,7 @@ data class AuthUser(val id: String, val email: String, val name: String)
 
 class AuthRepository(private val client: SupabaseClient, private val store: SessionStore) {
     private var session: JSONObject? = store.read()?.let { runCatching { JSONObject(it) }.getOrNull() }
-    private val _user = MutableStateFlow(session?.let(::userFrom))
+    private val _user = MutableStateFlow(session?.let { runCatching { userFrom(it) }.getOrNull() })
     val user: StateFlow<AuthUser?> = _user
     private val mutex = Mutex()
 

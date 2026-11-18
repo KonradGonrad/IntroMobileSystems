@@ -60,14 +60,14 @@ class ItemRepository(
                 }
             }
             val server=api.listings()
-            val pending=cloud.pending().filter { it.error==null }
+            val allPending=cloud.pending()
+            val pending=allPending.filter { it.error==null }
             db.withTransaction {
-                val local=dao.getAll().associateBy { it.id }
                 val protected=pending.filter { it.kind!="message" }.map { it.targetId }.toSet()
-                val merged=server.map { if(it.id in protected) local[it.id] ?: it else it } +
-                    local.values.filter { it.id in protected && server.none { remote -> remote.id==it.id } }
+                val failedDrafts=allPending.filter { it.kind=="save" && it.error!=null }.map { it.targetId }.toSet()
                 val deleting=pending.filter { it.kind=="delete" }.map { it.targetId }.toSet()
-                dao.clear(); dao.upsertAll(merged.filter { it.id !in deleting })
+                val merged=SyncHelper.mergeCloudItems(server,dao.getAll(),protected,failedDrafts,deleting)
+                dao.clear(); dao.upsertAll(merged)
             }
             val (conversations,messages)=api.chats()
             db.withTransaction { cloud.saveConversations(conversations); cloud.saveMessages(messages) }
@@ -85,8 +85,12 @@ class ItemRepository(
         saveListing(Item(id,title.trim(),description.trim(),category,condition,"Dorm 5 · Łódź",user.name,photoPath,isMine=true,pendingSync=true))
         return id
     }
-    private suspend fun saveListing(item: Item) {
+    private suspend fun saveListing(item: Item, editing: Boolean = false) {
         mutex.withLock { db.withTransaction {
+            if(editing) {
+                val current=dao.getById(item.id) ?: throw IOException("Listing not found")
+                if(!current.isMine || current.status!=ListingStatus.ACTIVE) throw IOException("This listing is reserved or unavailable. Refresh before editing.")
+            }
             dao.upsert(item.copy(pendingSync=true))
             queue("save",item.id,JSONObject().put("title",item.title).put("description",item.description)
                 .put("category",item.category.name).put("condition",item.condition.name).put("local_photo",item.photoPath ?: ""))
@@ -96,7 +100,7 @@ class ItemRepository(
     suspend fun editListing(id: String,title: String,description: String,category: Category,condition: Condition,photoPath: String?) {
         val item=dao.getById(id) ?: throw IOException("Listing not found")
         if(!item.isMine || item.status!=ListingStatus.ACTIVE) throw IOException("Only an available listing you own can be edited.")
-        saveListing(item.copy(title=title.trim(),description=description.trim(),category=category,condition=condition,photoPath=photoPath))
+        saveListing(item.copy(title=title.trim(),description=description.trim(),category=category,condition=condition,photoPath=photoPath),editing=true)
     }
     private suspend fun change(id: String,kind: String,transform: (Item)->Item?) {
         mutex.withLock { db.withTransaction {
@@ -126,5 +130,18 @@ class ItemRepository(
         } }
         requestSync()
     }
-    suspend fun dismissFailure(id: String) { mutex.withLock { cloud.removeAction(id) }; requestSync() }
+    suspend fun dismissFailure(id: String) {
+        mutex.withLock { db.withTransaction {
+            cloud.pending().find { it.id==id }?.let {
+                if(it.kind=="message") cloud.removeMessage(it.targetId)
+                if(it.kind=="save") dao.delete(it.targetId)
+            }
+            cloud.removeAction(id)
+        } }
+        requestSync()
+    }
+    suspend fun retryFailure(id: String) {
+        mutex.withLock { cloud.pending().find { it.id==id }?.let { cloud.saveAction(it.copy(error=null)) } }
+        requestSync()
+    }
 }

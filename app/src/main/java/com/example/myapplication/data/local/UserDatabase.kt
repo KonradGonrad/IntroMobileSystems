@@ -48,6 +48,7 @@ interface CloudDao {
     @Query("SELECT * FROM messages WHERE conversationId = :id ORDER BY createdAt, id")
     fun messages(id: String): Flow<List<ChatMessage>>
     @Upsert suspend fun saveMessages(rows: List<ChatMessage>)
+    @Query("DELETE FROM messages WHERE id = :id") suspend fun removeMessage(id: String)
     @Query("UPDATE messages SET pending = 0 WHERE id = :id") suspend fun confirmMessage(id: String)
 }
 
