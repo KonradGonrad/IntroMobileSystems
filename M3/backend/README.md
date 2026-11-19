@@ -21,3 +21,5 @@ Registration creates a profile through a database trigger. An invalid domain is 
 Official references: [email configuration](https://supabase.com/docs/guides/auth/general-configuration), [sessions](https://supabase.com/docs/guides/auth/sessions), [user data and triggers](https://supabase.com/docs/guides/auth/managing-user-data), [row level security](https://supabase.com/docs/guides/database/postgres/row-level-security).
 
 Setup and hosted integration status: **pending execution in the team's project**. Local source files alone do not provision Supabase.
+
+Live API verification subsequently passed; see `../testing/supabase-live.txt`. Re-run from the repository root with `python3 M3/testing/live-backend.py`. This creates two fictional accounts and an archived conversation; it soft-deletes its test listing. Run only against the demo project.

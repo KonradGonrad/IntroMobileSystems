@@ -1,49 +1,17 @@
-# IntroMobileSystems
+# DormSwap
 
-## Problem
-Students, living in dormitories or around/close to campus, constantly need and
-get rid of everyday items: textbooks, kitchenware, small furniture,
-electronics. Demand peaks at the start and end of each semester and
-during move-outs especially for international students.
+Android app for students in Dormitory 5, Łódź to share unused items, reserve them and arrange pickup.
 
-Existing options don't solve this problem efficiently :
-- General marketplaces like OLX are built for shipping and dealing
-  with random users from whole Poland, and are cluttered with commercial listings.
-- Dorm Facebook groups are chaotic: posts get buried, there's no
-  search or filtering, and not every student uses Facebook
-  (international students in particular).
+- [M3 setup, functionality, architecture and five-minute demo](M3/README.md)
+- [Supabase configuration](M3/backend/README.md)
+- [Tests and outstanding verification](M3/testing/README.md)
+- [Privacy, accessibility and limitations](M3/privacy-and-accessibility.md)
+- [AI use and three checked suggestions](AI_USE.md)
+- [M2 working MVP](M2/README.md) / [M1 problem and prototype](M1/README.md)
 
-As a result, usable items often end up in the trash at move-out,
-while new students spend money on things they could get free or
-cheaply from someone in the same building.
+```bash
+./gradlew assembleDebug
+./gradlew test
+```
 
-## Milestones
-
-- **M1 – Problem and prototype:** [M1/README.md](M1/README.md)
-- **M2 – Working MVP:** [M2/README.md](M2/README.md) – build instructions, demo steps,
-  checklist of what works, mock/simulated parts and the architecture diagram.
-
-## Project structure
-
-Application is based on MVVM model.
-
-the file structure of the project is shown below:
-
-![projectStructureFiles](resources/ProjectStructure.png)
-
-UML schema:
-
-![projectUMLStructure](resources/UML.png)
-
-## TEAM RESPONSIBILITIES M1
-
-
-Konrad Kargul: Design and
-first screens.
-
-Aleksander Szaforski: First
-visual in android studio.
-
-Antoni Ciszewski
-Presentation, concept for
-screens, user stories.
+Configure the public Supabase URL/key locally before testing sign-in. Live Supabase API checks passed. Physical two-device verification, peer sessions and an independent teammate build are pending. See M3 documentation for exact status rather than assuming the application is ready to submit.
