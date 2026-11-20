@@ -3,6 +3,7 @@ package com.example.myapplication.data.repository
 import androidx.room.withTransaction
 import com.example.myapplication.core.network.NetworkMonitor
 import com.example.myapplication.data.auth.AuthUser
+import com.example.myapplication.data.council.*
 import com.example.myapplication.data.local.*
 import com.example.myapplication.data.model.*
 import com.example.myapplication.data.remote.*
@@ -41,6 +42,24 @@ class ItemRepository(
     fun messages(id: String)=cloud.messages(id)
     fun setSimulateServerError(enabled: Boolean) { prefs.setSimulateServerError(enabled); requestSync() }
     fun requestSync() { appScope.launch { sync() } }
+
+    suspend fun isStudentCouncil() = api.isStudentCouncil()
+    suspend fun previewFair(rows: List<FairRow>) = api.previewFair(rows)
+
+    suspend fun importFair(preview: FairPreview, overwrite: Boolean) {
+        mutex.withLock {
+            val changing = preview.matches.filter { overwrite && it.status == FairStatus.CHANGED }.mapNotNull { it.id }.toSet()
+            check(cloud.pending().none { it.targetId in changing && it.kind in listOf("save", "delete") }) {
+                "Sync or resolve your pending edits in Account, then review this file again."
+            }
+            try {
+                api.importFair(preview, overwrite)
+            } finally {
+                // A lost response or closed screen can still follow a successful commit.
+                requestSync()
+            }
+        }
+    }
 
     suspend fun sync() = mutex.withLock {
         if (!isOnline.value) return@withLock

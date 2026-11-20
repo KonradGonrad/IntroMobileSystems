@@ -2,6 +2,7 @@ package com.example.myapplication.data.remote
 
 import android.content.Context
 import com.example.myapplication.data.auth.AuthRepository
+import com.example.myapplication.data.council.*
 import com.example.myapplication.data.local.*
 import com.example.myapplication.data.model.*
 import kotlinx.coroutines.Dispatchers
@@ -15,7 +16,19 @@ class CloudApi(private val context: Context, private val client: SupabaseClient,
                private val userId: String) {
     suspend fun rpc(name: String, body: JSONObject = JSONObject()): String {
         check(auth.user.value?.id == userId) { "Account changed. Please reopen this screen." }
-        return client.json("/rest/v1/rpc/$name",body,auth.token())
+        return client.json("/rest/v1/rpc/$name",body,auth.token(userId))
+    }
+    suspend fun isStudentCouncil() = rpc("is_student_council").trim().toBooleanStrict()
+
+    suspend fun previewFair(rows: List<FairRow>): FairPreview = withContext(Dispatchers.Default) {
+        val result = rpc("council_import", JSONObject().put("entries", rows.toEntries()))
+        FairPreview.decode(rows, JSONArray(result))
+    }
+
+    suspend fun importFair(preview: FairPreview, overwrite: Boolean): Unit = withContext(Dispatchers.Default) {
+        rpc("council_import", JSONObject().put("entries", preview.matches.map { it.row }.toEntries())
+            .put("expected", preview.snapshot).put("overwrite_existing", overwrite))
+        Unit
     }
     suspend fun upload(action: PendingAction) {
         val payload=JSONObject(action.payload)
@@ -43,7 +56,7 @@ class CloudApi(private val context: Context, private val client: SupabaseClient,
             Item(id=j.getString("id"), title=j.getString("title"),description=j.getString("description"),
                 category=Category.valueOf(j.getString("category")),condition=Condition.valueOf(j.getString("condition")),
                 location="Dorm 5 · Łódź", ownerName=j.getString("owner_name"),photoPath=local,
-                isMine=j.getBoolean("is_mine"),isLiked=j.getBoolean("is_liked"),
+                isMine=j.getBoolean("is_mine"),isLiked=j.getBoolean("is_liked"),isCouncil=j.optBoolean("is_council",false),
                 status=if(j.getBoolean("reserved")) ListingStatus.RESERVED else ListingStatus.ACTIVE,
                 reservedByMe=j.getBoolean("reserved_by_me"),createdAt=j.getLong("created_at"))
         }

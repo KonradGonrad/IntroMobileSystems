@@ -10,9 +10,12 @@ import java.net.URL
 
 class ApiException(val status: Int, message: String) : IOException(message)
 
-/** Small REST client: HTTPS only, bounded waits, no credentials or message bodies in logs. */
+/** Hosted connections use HTTPS. Debug builds can also reach a local server via adb reverse. */
 class SupabaseClient {
-    val configured get() = BuildConfig.SUPABASE_URL.startsWith("https://") && BuildConfig.SUPABASE_ANON_KEY.isNotBlank()
+    val configured get() = BuildConfig.SUPABASE_ANON_KEY.isNotBlank() && (
+        BuildConfig.SUPABASE_URL.startsWith("https://") ||
+            (BuildConfig.DEBUG && Regex("""http://127\.0\.0\.1:[0-9]{1,5}/?""").matches(BuildConfig.SUPABASE_URL))
+    )
     suspend fun request(path: String, method: String = "GET", token: String? = null,
                         body: ByteArray? = null, contentType: String = "application/json"): ByteArray = withContext(Dispatchers.IO) {
         if (!configured) throw IOException("Supabase is not configured. Follow M3/backend/README.md.")

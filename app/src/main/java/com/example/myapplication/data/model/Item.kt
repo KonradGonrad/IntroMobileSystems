@@ -1,6 +1,7 @@
 package com.example.myapplication.data.model
 
 import androidx.room.Entity
+import androidx.room.ColumnInfo
 import androidx.room.PrimaryKey
 
 enum class Category(val label: String) {
@@ -47,5 +48,6 @@ data class Item(
     val status: ListingStatus = ListingStatus.ACTIVE,
     val reservedByMe: Boolean = false,
     val pendingSync: Boolean = false,
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
+    @ColumnInfo(defaultValue = "0") val isCouncil: Boolean = false
 )
