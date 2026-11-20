@@ -2,60 +2,48 @@ package com.example.myapplication
 
 import android.app.Application
 import com.example.myapplication.core.network.NetworkMonitor
-import com.example.myapplication.data.local.AppDatabase
-import com.example.myapplication.data.local.AppPreferences
+import com.example.myapplication.data.auth.*
+import com.example.myapplication.data.local.*
 import com.example.myapplication.data.photo.PhotoStorage
-import com.example.myapplication.data.remote.FakeUploadService
-import com.example.myapplication.data.remote.ListingsApi
+import com.example.myapplication.data.remote.*
 import com.example.myapplication.data.repository.ItemRepository
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.*
 
-/**
- * Application class - creates the database, network classes and repository once
- * so every screen uses the same instances (simple manual dependency injection).
- */
 class DormSwapApp : Application() {
-
-    // lives as long as the app process, used for sync
-    val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
-
-    lateinit var repository: ItemRepository
-        private set
-
-    lateinit var photoStorage: PhotoStorage
-        private set
+    val appScope=CoroutineScope(SupervisorJob()+Dispatchers.Main)
+    lateinit var auth: AuthRepository; private set
+    lateinit var repository: ItemRepository; private set
+    lateinit var photoStorage: PhotoStorage; private set
+    private val _readyUser=MutableStateFlow<String?>(null)
+    val readyUser: StateFlow<String?> = _readyUser
 
     override fun onCreate() {
         super.onCreate()
-        val database = AppDatabase.create(this)
-        val prefs = AppPreferences(this)
-        val networkMonitor = NetworkMonitor(this)
-        photoStorage = PhotoStorage(this)
-
-        repository = ItemRepository(
-            dao = database.itemDao(),
-            api = ListingsApi(MOCK_API_URL, prefs),
-            uploadService = FakeUploadService(prefs),
-            networkMonitor = networkMonitor,
-            prefs = prefs,
-            appScope = appScope
-        )
-
+        val client=SupabaseClient()
+        auth=AuthRepository(client,SessionStore(this))
+        photoStorage=PhotoStorage(this)
+        val network=NetworkMonitor(this)
         appScope.launch {
-            repository.addSampleDataIfEmpty()
-            // sync on start and every time the internet comes back
-            networkMonitor.isOnline.collect { online ->
-                if (online) repository.sync()
+            auth.user.map { it?.id }.distinctUntilChanged().collectLatest { id ->
+                _readyUser.value=null
+                if(id==null) return@collectLatest
+                val user=auth.user.value ?: return@collectLatest
+                val database=UserDatabase.create(this@DormSwapApp,id)
+                val sessionJob=SupervisorJob()
+                val scope=CoroutineScope(sessionJob+Dispatchers.Main)
+                repository=ItemRepository(database,CloudApi(this@DormSwapApp,client,auth,id),user,
+                    network,AppPreferences(this@DormSwapApp,id),scope)
+                _readyUser.value=id
+                try { network.isOnline.collect { if(it) repository.requestSync() } }
+                finally {
+                    _readyUser.value=null
+                    withContext(NonCancellable) {
+                        sessionJob.cancelAndJoin()
+                        withContext(Dispatchers.IO) { database.close() }
+                    }
+                }
             }
         }
-    }
-
-    companion object {
-        // MOCK API - static JSON file with synthetic data stored in our repository
-        const val MOCK_API_URL =
-            "https://raw.githubusercontent.com/KonradGonrad/IntroMobileSystems/main/M2/mock-api/listings.json"
     }
 }

@@ -1,5 +1,7 @@
 package com.example.myapplication.ui.details
 
+import androidx.compose.runtime.*
+import kotlinx.coroutines.CancellationException
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
@@ -36,6 +38,24 @@ class ItemDetailViewModel(
 
     val isOnline: StateFlow<Boolean> = repository.isOnline
     val lastSyncTime: StateFlow<Long?> = repository.lastSyncTime
+
+    var actionError by mutableStateOf<String?>(null); private set
+    var chatId by mutableStateOf<String?>(null); private set
+    var deleted by mutableStateOf(false); private set
+    var busy by mutableStateOf(false); private set
+    fun clearChat() { chatId=null }
+    fun startChat() = action { chatId=repository.startChat(itemId) }
+    fun delete() = action { repository.deleteListing(itemId); deleted=true }
+    private fun action(block: suspend ()->Unit) {
+        if(busy) return
+        busy=true
+        viewModelScope.launch {
+            try { block(); actionError=null }
+            catch(e: CancellationException) { throw e }
+            catch(e: Exception) { actionError=e.message }
+            finally { busy=false }
+        }
+    }
 
     fun onReserveClick() {
         viewModelScope.launch { repository.reserve(itemId) }

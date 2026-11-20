@@ -124,6 +124,7 @@ fun ItemPhoto(
 ) {
     // load the file in the background so scrolling stays smooth
     val bitmap by produceState<ImageBitmap?>(initialValue = null, photoPath) {
+        value = null
         value = photoPath?.let { path ->
             withContext(Dispatchers.IO) { BitmapFactory.decodeFile(path)?.asImageBitmap() }
         }

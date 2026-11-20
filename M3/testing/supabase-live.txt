@@ -1,0 +1,7 @@
+PASS signup Owner
+PASS signup Buyer
+PASS shared listing
+PASS reservation
+PASS shared chat
+PASS cancellation and deletion
+Two fictional Demo accounts and one archived test conversation remain in Supabase.
