@@ -17,6 +17,7 @@ room = "2.8.5"
 orgJson = "20240303"
 
 [libraries]
+commons-csv = { module = "org.apache.commons:commons-csv", version = "1.10.0" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 # real org.json for unit tests (Android's version only works on a device)

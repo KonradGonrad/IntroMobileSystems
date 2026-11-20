@@ -330,6 +330,7 @@ private fun SectionTitle(tab: FeedTab, count: Int) {
         FeedTab.BROWSE -> "Give them a second life"
         FeedTab.MY_LISTINGS -> "My listings"
         FeedTab.LIKED -> "Liked listings"
+        FeedTab.COUNCIL -> "Student council fair"
     }
     Row(verticalAlignment = Alignment.CenterVertically) {
         Text(
@@ -354,6 +355,7 @@ private fun EmptyState(tab: FeedTab, hasFilters: Boolean) {
         hasFilters -> "No items match your search. Try another word or category."
         tab == FeedTab.MY_LISTINGS -> "You haven't listed anything yet. Tap + to add your first item."
         tab == FeedTab.LIKED -> "Nothing liked yet. Tap the heart on an item to save it here."
+        tab == FeedTab.COUNCIL -> "The student council has no fair listings yet."
         else -> "No items in your dorm right now."
     }
     Text(

@@ -23,11 +23,24 @@ import com.example.myapplication.core.theme.DormGreenLight
 import com.example.myapplication.core.theme.TextMuted
 
 @Composable
-fun AccountScreen(onBackClick: () -> Unit, onLogout: () -> Unit) {
+fun AccountScreen(onBackClick: () -> Unit, onLogout: () -> Unit, onCouncilImport: () -> Unit) {
     val app = androidx.compose.ui.platform.LocalContext.current.applicationContext as com.example.myapplication.DormSwapApp
     val user = app.auth.user.value
     val failures by app.repository.failedActions.collectAsStateWithLifecycle(initialValue=emptyList())
     val scope=rememberCoroutineScope()
+    val repo = app.repository
+    val online by repo.isOnline.collectAsStateWithLifecycle()
+    var accessCheck by remember { mutableIntStateOf(0) }
+    var isCouncil by remember { mutableStateOf(false) }
+    var accessError by remember { mutableStateOf(false) }
+    LaunchedEffect(repo, online, accessCheck) {
+        accessError = false
+        if (online) {
+            try { isCouncil = repo.isStudentCouncil() }
+            catch (e: kotlinx.coroutines.CancellationException) { throw e }
+            catch (_: Exception) { isCouncil = false; accessError = true }
+        }
+    }
     var discardId by remember { mutableStateOf<String?>(null) }
     discardId?.let { id ->
         AlertDialog(onDismissRequest={discardId=null},title={Text("Discard rejected change?")},
@@ -56,9 +69,16 @@ fun AccountScreen(onBackClick: () -> Unit, onLogout: () -> Unit) {
                     Spacer(Modifier.height(12.dp))
                     Text(user?.name.orEmpty(), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                     Text(user?.email.orEmpty(), color = TextMuted)
+                    if (isCouncil) Text("Student council", style = MaterialTheme.typography.labelLarge)
                     Spacer(Modifier.height(8.dp))
                     Text("Dormitory 5 · Łódź", style = MaterialTheme.typography.bodyMedium, color = TextMuted)
                 }
+            }
+            if (isCouncil) {
+                Button(onClick = onCouncilImport) { Text("Manage fair listings") }
+            } else if (accessError) {
+                Text("Could not check access to council tools.")
+                TextButton(onClick = { accessCheck++ }) { Text("Retry access check") }
             }
             failures.forEach { failure ->
                 Text("${failure.kind}: ${failure.error}",color=MaterialTheme.colorScheme.error)

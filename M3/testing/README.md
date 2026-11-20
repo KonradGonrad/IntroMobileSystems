@@ -1,5 +1,13 @@
 # Test summary
 
+## Student council verification on 2026-11-20
+
+The debug and unsigned release APKs built successfully. All 34 debug unit tests and all five instrumentation tests passed on an Android 11 emulator. The authenticated device scenario used a local Supabase instance. Android Lint reported zero errors and 29 warnings.
+
+The council signed in on the emulator, saved the CSV template through the Android document picker, selected a filled file, reviewed the preview and published the item. Two-account API checks covered sharing, likes, reservations, chat, cancellation, deletion and private photo retrieval. Import checks covered ordinary-student denial, duplicate prevention, optional overwrites, preservation of likes and photos, and rejection of a stale preview after a reservation. Both PostgreSQL policy suites passed. The team's hosted project and physical camera were outside this run.
+
+## Earlier M3 verification
+
 Verification date: 2026-11-18. The historical commit timestamps requested by the team are not test execution dates.
 
 | Check | Observed result |
@@ -18,7 +26,7 @@ Device coverage: application identity; separate Room account databases with pers
 
 Local SQL tests cover domain restriction, owner-only writes, own-item reservation rejection, already-reserved conflict, cancellation ownership, operation deduplication, private conversations/messages, edit blocking and conversation retention after deleting a listing. These are sequential policy checks; a simultaneous two-device race still needs the manual checklist.
 
-For local SQL verification, use a **new disposable PostgreSQL database** and run, in order, `backend/local-test-bootstrap.sql`, `backend/schema.sql`, `backend/policy-tests.sql` with `psql -v ON_ERROR_STOP=1`. The bootstrap emulates only the minimal Supabase auth/storage interfaces; never run it in the hosted project. Policy test rows are rolled back.
+For local SQL verification, use a **new disposable PostgreSQL database** and run, in order, `backend/local-test-bootstrap.sql`, `backend/schema.sql`, `backend/council-import.sql`, `backend/policy-tests.sql` and `backend/council-tests.sql` with `psql -v ON_ERROR_STOP=1`. The bootstrap emulates only the minimal Supabase auth/storage interfaces. Both test suites roll back their fictional accounts and listings.
 
 Evidence: `build-and-tests.txt`, `backend-local.txt`, `photo-before.txt`, `photo-after.txt`, and actual PNGs in `../screenshots/`. Do not treat M2 screenshots as M3 verification.
 

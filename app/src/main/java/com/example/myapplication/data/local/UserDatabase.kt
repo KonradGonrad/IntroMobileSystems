@@ -2,6 +2,8 @@ package com.example.myapplication.data.local
 
 import android.content.Context
 import androidx.room.*
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import com.example.myapplication.data.model.Item
 import kotlinx.coroutines.flow.Flow
 
@@ -52,15 +54,22 @@ interface CloudDao {
     @Query("UPDATE messages SET pending = 0 WHERE id = :id") suspend fun confirmMessage(id: String)
 }
 
+internal val councilListingsMigration = object : Migration(1, 2) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE items ADD COLUMN isCouncil INTEGER NOT NULL DEFAULT 0")
+    }
+}
+
 /** Separate Room files prevent one account from seeing another account's cached data. */
-@Database(entities = [Item::class, PendingAction::class, Conversation::class, ChatMessage::class], version = 1, exportSchema = false)
+@Database(entities = [Item::class, PendingAction::class, Conversation::class, ChatMessage::class], version = 2, exportSchema = false)
 abstract class UserDatabase : RoomDatabase() {
     abstract fun items(): ItemDao
     abstract fun cloud(): CloudDao
     companion object {
         fun create(context: Context, userId: String): UserDatabase {
             require(Regex("[a-fA-F0-9-]{36}").matches(userId))
-            return Room.databaseBuilder(context, UserDatabase::class.java, "dormswap-$userId.db").build()
+            return Room.databaseBuilder(context, UserDatabase::class.java, "dormswap-$userId.db")
+                .addMigrations(councilListingsMigration).build()
         }
     }
 }

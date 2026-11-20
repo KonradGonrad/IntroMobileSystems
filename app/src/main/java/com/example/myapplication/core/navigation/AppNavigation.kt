@@ -11,6 +11,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.myapplication.ui.chat.ChatScreen
 import com.example.myapplication.ui.account.AccountScreen
+import com.example.myapplication.ui.council.CouncilImportScreen
 import com.example.myapplication.ui.login.LoginScreen
 import com.example.myapplication.ui.addItem.AddItemScreen
 import com.example.myapplication.ui.details.ItemDetailScreen
@@ -19,6 +20,7 @@ import com.example.myapplication.ui.feed.FeedScreen
 object Routes {
     const val LOGIN = "login"
     const val ACCOUNT = "account"
+    const val COUNCIL_IMPORT = "council_import"
     const val FEED = "feed"
     const val ADD_ITEM = "add_item"
     const val ITEM_DETAIL = "item/{itemId}"
@@ -47,11 +49,14 @@ fun AppNavigation() {
         composable(Routes.ACCOUNT) {
             AccountScreen(
                 onBackClick = { navController.popBackStack() },
+                onCouncilImport = { navController.navigate(Routes.COUNCIL_IMPORT) },
                 onLogout = {
                     scope.launch { app.auth.signOut() }
                 }
             )
         }
+
+        composable(Routes.COUNCIL_IMPORT) { CouncilImportScreen(onBack = { navController.popBackStack() }) }
 
         composable(Routes.FEED) {
             FeedScreen(

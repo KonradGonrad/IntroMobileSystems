@@ -38,7 +38,8 @@ class AuthRepository(private val client: SupabaseClient, private val store: Sess
         session = result
         _user.value = userFrom(result)
     }
-    suspend fun token(): String = mutex.withLock {
+    suspend fun token(expectedUserId: String? = null): String = mutex.withLock {
+        check(expectedUserId == null || expectedUserId == _user.value?.id) { "Account changed. Reopen this screen." }
         var s = session ?: throw IOException("Please sign in again.")
         if (s.optLong("expires_at") < System.currentTimeMillis()/1000 + 60) {
             try {

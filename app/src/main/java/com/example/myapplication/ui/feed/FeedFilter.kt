@@ -7,7 +7,8 @@ import com.example.myapplication.data.model.ListingStatus
 enum class FeedTab(val label: String) {
     BROWSE("Browse"),
     MY_LISTINGS("My listings"),
-    LIKED("Liked listings")
+    LIKED("Liked listings"),
+    COUNCIL("Student council")
 }
 
 /**
@@ -25,6 +26,7 @@ object FeedFilter {
                     FeedTab.BROWSE -> !item.isMine && item.status != ListingStatus.EXCHANGED
                     FeedTab.MY_LISTINGS -> item.isMine
                     FeedTab.LIKED -> item.isLiked
+                    FeedTab.COUNCIL -> item.isCouncil && item.status != ListingStatus.EXCHANGED
                 }
             }
             .filter { item -> category == null || item.category == category }
