@@ -24,6 +24,7 @@ import androidx.compose.material.icons.outlined.Clear
 import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.material.icons.outlined.Eco
 import androidx.compose.material.icons.outlined.ErrorOutline
+import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Search
@@ -69,7 +70,9 @@ import com.example.myapplication.ui.components.formatSyncTime
 
 @Composable
 fun FeedScreen(
+    onChatsClick: () -> Unit,
     onAddItemClick: () -> Unit,
+    onAccountClick: () -> Unit,
     onItemClick: (String) -> Unit,
     viewModel: FeedViewModel = viewModel(factory = FeedViewModel.Factory)
 ) {
@@ -83,7 +86,7 @@ fun FeedScreen(
                 tonalElevation = 0.dp,
                 actions = {
                     Text(
-                        text = "Add things that you don't need",
+                        text = "Share an item",
                         style = MaterialTheme.typography.bodyMedium,
                         color = DormGreen,
                         fontWeight = FontWeight.SemiBold,
@@ -99,7 +102,7 @@ fun FeedScreen(
         }
     ) { padding ->
         LazyVerticalGrid(
-            columns = GridCells.Fixed(2),
+            columns = GridCells.Adaptive((160 * androidx.compose.ui.platform.LocalDensity.current.fontScale.coerceAtMost(2f)).dp),
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding),
@@ -110,9 +113,13 @@ fun FeedScreen(
             item(span = { GridItemSpan(maxLineSpan) }) {
                 FeedHeader(
                     sync = sync,
+                    onAccountClick = onAccountClick,
                     onRefreshClick = viewModel::onRefreshClick,
                     onSimulateServerErrorChange = viewModel::onSimulateServerErrorChange
                 )
+            }
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                TextButton(onClick=onChatsClick) { Text("Messages") }
             }
             item(span = { GridItemSpan(maxLineSpan) }) {
                 TabRow(selected = state.tab, onSelected = viewModel::onTabSelected)
@@ -156,6 +163,7 @@ fun FeedScreen(
 @Composable
 private fun FeedHeader(
     sync: FeedSyncState,
+    onAccountClick: () -> Unit,
     onRefreshClick: () -> Unit,
     onSimulateServerErrorChange: (Boolean) -> Unit
 ) {
@@ -184,6 +192,9 @@ private fun FeedHeader(
                 else -> IconButton(onClick = onRefreshClick) {
                     Icon(Icons.Outlined.Refresh, contentDescription = "Refresh listings")
                 }
+            }
+            IconButton(onClick = onAccountClick) {
+                Icon(Icons.Outlined.AccountCircle, contentDescription = "My account", tint = DormGreen)
             }
             Box {
                 IconButton(onClick = { menuOpen = true }) {

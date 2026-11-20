@@ -1,21 +1,16 @@
 package com.example.myapplication.data.repository
 
+import androidx.room.withTransaction
 import com.example.myapplication.core.network.NetworkMonitor
-import com.example.myapplication.data.local.AppPreferences
-import com.example.myapplication.data.local.ItemDao
-import com.example.myapplication.data.local.SampleData
-import com.example.myapplication.data.model.Category
-import com.example.myapplication.data.model.Condition
-import com.example.myapplication.data.model.Item
-import com.example.myapplication.data.model.ListingStatus
-import com.example.myapplication.data.remote.FakeUploadService
-import com.example.myapplication.data.remote.ListingsApi
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.launch
-import org.json.JSONException
+import com.example.myapplication.data.auth.AuthUser
+import com.example.myapplication.data.local.*
+import com.example.myapplication.data.model.*
+import com.example.myapplication.data.remote.*
+import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import org.json.JSONObject
 import java.io.IOException
 import java.util.UUID
 
@@ -26,124 +21,127 @@ sealed interface SyncStatus {
     data class Error(val message: String) : SyncStatus
 }
 
-/**
- * Single place the ViewModels get data from.
- * Room is the source of truth - the UI always reads from the database,
- * the network is only used to update the database (offline first).
- */
+/** Room is the UI's source of truth. A durable outbox retries actual Supabase writes. */
 class ItemRepository(
-    private val dao: ItemDao,
-    private val api: ListingsApi,
-    private val uploadService: FakeUploadService,
-    private val networkMonitor: NetworkMonitor,
-    private val prefs: AppPreferences,
-    private val appScope: CoroutineScope
+    private val db: UserDatabase, private val api: CloudApi, private val user: AuthUser,
+    networkMonitor: NetworkMonitor, private val prefs: AppPreferences, private val appScope: CoroutineScope
 ) {
-
-    val items: Flow<List<Item>> = dao.observeAll()
-    val isOnline: StateFlow<Boolean> = networkMonitor.isOnline
-    val lastSyncTime: StateFlow<Long?> = prefs.lastSyncTime
-    val simulateServerError: StateFlow<Boolean> = prefs.simulateServerError
-
-    private val _syncStatus = MutableStateFlow<SyncStatus>(SyncStatus.Idle)
+    private val dao=db.items()
+    private val cloud=db.cloud()
+    private val mutex=Mutex()
+    val items=dao.observeAll()
+    val isOnline=networkMonitor.isOnline
+    val lastSyncTime=prefs.lastSyncTime
+    val simulateServerError=prefs.simulateServerError
+    val conversations=cloud.conversations()
+    val failedActions=cloud.observeErrors()
+    private val _syncStatus=MutableStateFlow<SyncStatus>(SyncStatus.Idle)
     val syncStatus: StateFlow<SyncStatus> = _syncStatus
+    fun item(id: String)=dao.observeById(id)
+    fun messages(id: String)=cloud.messages(id)
+    fun setSimulateServerError(enabled: Boolean) { prefs.setSimulateServerError(enabled); requestSync() }
+    fun requestSync() { appScope.launch { sync() } }
 
-    private var isSyncing = false
-
-    fun item(id: String): Flow<Item?> = dao.observeById(id)
-
-    suspend fun addSampleDataIfEmpty() {
-        if (dao.count() == 0) {
-            dao.upsertAll(SampleData.items())
-        }
-    }
-
-    fun setSimulateServerError(enabled: Boolean) = prefs.setSimulateServerError(enabled)
-
-    /** Starts a sync that keeps running even if the user leaves the screen. */
-    fun requestSync() {
-        appScope.launch { sync() }
-    }
-
-    /**
-     * 1. sends changes made on this phone (simulated upload)
-     * 2. downloads listings from the mock API and saves them in Room
-     */
-    suspend fun sync() {
-        if (isSyncing) return
-        if (!isOnline.value) {
-            _syncStatus.value = SyncStatus.Error("You're offline")
-            return
-        }
-
-        isSyncing = true
-        _syncStatus.value = SyncStatus.Loading
+    suspend fun sync() = mutex.withLock {
+        if (!isOnline.value) return@withLock
+        _syncStatus.value=SyncStatus.Loading
         try {
-            for (item in dao.getPending()) {
-                uploadService.send(item)
-                // only mark as synced if the user didn't change it again in the meantime
-                if (dao.getById(item.id) == item) {
-                    dao.upsert(item.copy(pendingSync = false))
+            if (simulateServerError.value) throw IOException("Demo: server returned HTTP 503")
+            for (action in cloud.pending().filter { it.error==null }) {
+                try {
+                    api.upload(action)
+                    db.withTransaction {
+                        if(action.kind=="message") cloud.confirmMessage(action.targetId)
+                        cloud.removeAction(action.id)
+                    }
+                } catch (e: ApiException) {
+                    if(e.status in listOf(400,403,404,409,422)) cloud.saveAction(action.copy(error=e.message ?: "Action rejected"))
+                    else throw e
                 }
             }
-
-            val serverItems = api.fetchListings()
-            val localItems = dao.getAll()
-            val newCount = serverItems.count { server -> localItems.none { it.id == server.id } }
-            dao.upsertAll(SyncHelper.mergeServerItems(serverItems, localItems))
-
+            val server=api.listings()
+            val allPending=cloud.pending()
+            val pending=allPending.filter { it.error==null }
+            db.withTransaction {
+                val protected=pending.filter { it.kind!="message" }.map { it.targetId }.toSet()
+                val failedDrafts=allPending.filter { it.kind=="save" && it.error!=null }.map { it.targetId }.toSet()
+                val deleting=pending.filter { it.kind=="delete" }.map { it.targetId }.toSet()
+                val merged=SyncHelper.mergeCloudItems(server,dao.getAll(),protected,failedDrafts,deleting)
+                dao.clear(); dao.upsertAll(merged)
+            }
+            val (conversations,messages)=api.chats()
+            db.withTransaction { cloud.saveConversations(conversations); cloud.saveMessages(messages) }
             prefs.setLastSyncTime(System.currentTimeMillis())
-            _syncStatus.value = SyncStatus.Success(newCount)
-        } catch (e: IOException) {
-            _syncStatus.value = SyncStatus.Error(e.message ?: "Network error")
-        } catch (e: JSONException) {
-            _syncStatus.value = SyncStatus.Error("Server sent wrong data")
-        } finally {
-            isSyncing = false
-        }
+            val failures=cloud.pending().count { it.error!=null }
+            _syncStatus.value=if(failures==0) SyncStatus.Success(server.size) else SyncStatus.Error("$failures changes were rejected. Open Account to review them.")
+        } catch(e: CancellationException) { throw e }
+        catch(e: Exception) { _syncStatus.value=SyncStatus.Error(e.message ?: "Cannot sync. Try again.") }
     }
-
-    /** Saves a new listing on the phone. Returns the id of the new item. */
-    suspend fun addListing(
-        title: String,
-        description: String,
-        category: Category,
-        condition: Condition,
-        photoPath: String?
-    ): String {
-        val item = Item(
-            id = UUID.randomUUID().toString(),
-            title = title.trim(),
-            description = description.trim(),
-            category = category,
-            condition = condition,
-            location = "Dorm 5 · Łódź",
-            ownerName = "You",
-            photoPath = photoPath,
-            isMine = true,
-            pendingSync = true
-        )
-        dao.upsert(item)
-        if (isOnline.value) requestSync()
-        return item.id
+    private suspend fun queue(kind: String,id: String,payload: JSONObject=JSONObject()) {
+        cloud.saveAction(PendingAction(UUID.randomUUID().toString(),kind,id,payload.toString()))
     }
-
-    suspend fun toggleLike(id: String) {
-        val item = dao.getById(id) ?: return
-        dao.upsert(item.copy(isLiked = !item.isLiked))
+    suspend fun addListing(title: String,description: String,category: Category,condition: Condition,photoPath: String?): String {
+        val id=UUID.randomUUID().toString()
+        saveListing(Item(id,title.trim(),description.trim(),category,condition,"Dorm 5 · Łódź",user.name,photoPath,isMine=true,pendingSync=true))
+        return id
     }
-
-    suspend fun reserve(id: String) {
-        val item = dao.getById(id) ?: return
-        if (item.status != ListingStatus.ACTIVE) return
-        dao.upsert(item.copy(status = ListingStatus.RESERVED, reservedByMe = true, pendingSync = true))
-        if (isOnline.value) requestSync()
+    private suspend fun saveListing(item: Item, editing: Boolean = false) {
+        mutex.withLock { db.withTransaction {
+            if(editing) {
+                val current=dao.getById(item.id) ?: throw IOException("Listing not found")
+                if(!current.isMine || current.status!=ListingStatus.ACTIVE) throw IOException("This listing is reserved or unavailable. Refresh before editing.")
+            }
+            dao.upsert(item.copy(pendingSync=true))
+            queue("save",item.id,JSONObject().put("title",item.title).put("description",item.description)
+                .put("category",item.category.name).put("condition",item.condition.name).put("local_photo",item.photoPath ?: ""))
+        } }
+        requestSync()
     }
-
-    suspend fun cancelReservation(id: String) {
-        val item = dao.getById(id) ?: return
-        if (!item.reservedByMe) return
-        dao.upsert(item.copy(status = ListingStatus.ACTIVE, reservedByMe = false, pendingSync = true))
-        if (isOnline.value) requestSync()
+    suspend fun editListing(id: String,title: String,description: String,category: Category,condition: Condition,photoPath: String?) {
+        val item=dao.getById(id) ?: throw IOException("Listing not found")
+        if(!item.isMine || item.status!=ListingStatus.ACTIVE) throw IOException("Only an available listing you own can be edited.")
+        saveListing(item.copy(title=title.trim(),description=description.trim(),category=category,condition=condition,photoPath=photoPath),editing=true)
+    }
+    private suspend fun change(id: String,kind: String,transform: (Item)->Item?) {
+        mutex.withLock { db.withTransaction {
+            val old=dao.getById(id) ?: return@withTransaction
+            val item=transform(old) ?: return@withTransaction
+            if(kind=="delete") dao.delete(id) else dao.upsert(item.copy(pendingSync=true))
+            queue(kind,id,JSONObject().put("liked",item.isLiked))
+        } }
+        requestSync()
+    }
+    suspend fun toggleLike(id: String)=change(id,"like") { it.copy(isLiked=!it.isLiked) }
+    suspend fun reserve(id: String)=change(id,"reserve") { if(it.isMine || it.status!=ListingStatus.ACTIVE) null else it.copy(status=ListingStatus.RESERVED,reservedByMe=true) }
+    suspend fun cancelReservation(id: String)=change(id,"cancel") { if(!it.reservedByMe) null else it.copy(status=ListingStatus.ACTIVE,reservedByMe=false) }
+    suspend fun deleteListing(id: String)=change(id,"delete") { if(it.isMine) it else null }
+    suspend fun startChat(id: String): String = mutex.withLock {
+        if(!isOnline.value) throw IOException("Connect to start a new conversation. Existing chats work offline.")
+        val result=api.startChat(id)
+        val (cs,ms)=api.chats(); cloud.saveConversations(cs); cloud.saveMessages(ms)
+        result
+    }
+    suspend fun sendMessage(conversationId: String,body: String) {
+        require(body.trim().length in 1..2000) { "Message must have 1–2000 characters." }
+        mutex.withLock { db.withTransaction {
+            val id=UUID.randomUUID().toString()
+            cloud.saveMessages(listOf(ChatMessage(id,conversationId,user.id,body.trim(),System.currentTimeMillis(),true)))
+            queue("message",id,JSONObject().put("conversation_id",conversationId).put("body",body.trim()))
+        } }
+        requestSync()
+    }
+    suspend fun dismissFailure(id: String) {
+        mutex.withLock { db.withTransaction {
+            cloud.pending().find { it.id==id }?.let {
+                if(it.kind=="message") cloud.removeMessage(it.targetId)
+                if(it.kind=="save") dao.delete(it.targetId)
+            }
+            cloud.removeAction(id)
+        } }
+        requestSync()
+    }
+    suspend fun retryFailure(id: String) {
+        mutex.withLock { cloud.pending().find { it.id==id }?.let { cloud.saveAction(it.copy(error=null)) } }
+        requestSync()
     }
 }

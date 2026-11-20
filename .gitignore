@@ -49,3 +49,10 @@ Thumbs.db
 *.keystore
 # Gradle wrapper jar is needed to run ./gradlew
 !gradle/wrapper/gradle-wrapper.jar
+org.md
+# Local backend credentials supplied during setup
+/passwd.md
+/supabase/.temp/
+/M3/releases/
+
+/M3/commits/

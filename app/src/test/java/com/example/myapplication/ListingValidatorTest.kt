@@ -11,6 +11,12 @@ import org.junit.Test
 class ListingValidatorTest {
 
     @Test
+    fun descriptionAboveServerLimit_isRejectedBeforeQueueing() {
+        val errors=ListingValidator.validate("Demo item", "x".repeat(2001), Category.BOOKS, Condition.GOOD)
+        org.junit.Assert.assertTrue(errors.containsKey(FormField.DESCRIPTION))
+    }
+
+    @Test
     fun emptyForm_hasErrorForEveryField() {
         val errors = ListingValidator.validate("", "", null, null)
 

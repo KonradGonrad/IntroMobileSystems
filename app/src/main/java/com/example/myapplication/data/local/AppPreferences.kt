@@ -7,9 +7,9 @@ import kotlinx.coroutines.flow.StateFlow
 /**
  * Small values that don't need a database table (SharedPreferences).
  */
-class AppPreferences(context: Context) {
+class AppPreferences(context: Context, userId: String = "legacy") {
 
-    private val prefs = context.getSharedPreferences("dormswap_prefs", Context.MODE_PRIVATE)
+    private val prefs = context.getSharedPreferences("dormswap_prefs_$userId", Context.MODE_PRIVATE)
 
     private val _lastSyncTime = MutableStateFlow(prefs.getLong(KEY_LAST_SYNC, 0L).takeIf { it > 0 })
     /** When listings were last downloaded from the server (null = never). */
