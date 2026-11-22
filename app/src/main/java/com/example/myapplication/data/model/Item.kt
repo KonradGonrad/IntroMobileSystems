@@ -49,5 +49,8 @@ data class Item(
     val reservedByMe: Boolean = false,
     val pendingSync: Boolean = false,
     val createdAt: Long = System.currentTimeMillis(),
-    @ColumnInfo(defaultValue = "0") val isCouncil: Boolean = false
+    @ColumnInfo(defaultValue = "0") val isCouncil: Boolean = false,
+    val reserver: String? = null,
+    val expires: Long? = null,
+    val blockedUntil: Long? = null
 )

@@ -58,6 +58,9 @@ class CloudApi(private val context: Context, private val client: SupabaseClient,
                 location="Dorm 5 · Łódź", ownerName=j.getString("owner_name"),photoPath=local,
                 isMine=j.getBoolean("is_mine"),isLiked=j.getBoolean("is_liked"),isCouncil=j.optBoolean("is_council",false),
                 status=if(j.getBoolean("reserved")) ListingStatus.RESERVED else ListingStatus.ACTIVE,
+                reserver=if(j.isNull("reserver")) null else j.getString("reserver"),
+                expires=if(j.isNull("expires")) null else j.getLong("expires"),
+                blockedUntil=if(j.isNull("blocked_until")) null else j.getLong("blocked_until"),
                 reservedByMe=j.getBoolean("reserved_by_me"),createdAt=j.getLong("created_at"))
         }
     }

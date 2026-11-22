@@ -203,6 +203,8 @@ private fun ItemDetailContent(
                 )
 
                 Spacer(modifier = Modifier.height(20.dp))
+                item.reserver?.let { Text("Reserved by $it") }
+                item.expires?.let { Text("Reserved until " + java.text.DateFormat.getDateTimeInstance().format(java.util.Date(it))) }
                 if(item.pendingSync) Text("Local change · Awaiting sync. Rejected changes appear in Account.",color=TextMuted)
                 OwnerRow(item.ownerName)
                 error?.let { Text(it,color=MaterialTheme.colorScheme.error) }
@@ -280,10 +282,12 @@ private fun ReserveBar(item: Item, lastSyncTime: Long?, onReserveClick: () -> Un
                     }
                 }
 
+                (item.blockedUntil ?: 0) > System.currentTimeMillis() -> Text("You can reserve this listing again after " +
+                    java.text.DateFormat.getDateTimeInstance().format(java.util.Date(item.blockedUntil!!)))
                 item.status == ListingStatus.ACTIVE -> {
                     InfoBanner(
                         icon = Icons.Outlined.CloudOff,
-                        text = "The server confirms availability. Offline requests wait for a connection and may be rejected if someone reserves first."
+                        text = "Reservations last 24 hours. You can hold up to 3. After release, wait 24 hours to reserve this item again."
                     )
                     Button(
                         onClick = onReserveClick,

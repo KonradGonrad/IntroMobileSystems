@@ -78,6 +78,8 @@ fun ItemGridCard(item: Item, onClick: () -> Unit, onToggleLike: () -> Unit) {
             )
             Spacer(modifier = Modifier.height(4.dp))
             ConditionLabel(item.condition)
+            item.reserver?.let { Text("Reserved by $it", style=MaterialTheme.typography.labelSmall) }
+            if(item.pendingSync) Text("Awaiting sync", style=MaterialTheme.typography.labelSmall)
             Text(
                 text = "${item.ownerName} · ${item.location}",
                 style = MaterialTheme.typography.bodySmall,
@@ -126,6 +128,7 @@ fun MyListingRow(item: Item, onClick: () -> Unit) {
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold
                 )
+                item.reserver?.let { Text("Reserved by $it", style=MaterialTheme.typography.labelSmall) }
                 Text(item.condition.label, style = MaterialTheme.typography.bodySmall, color = TextMuted)
                 Text(item.location, style = MaterialTheme.typography.bodySmall, color = TextMuted)
             }

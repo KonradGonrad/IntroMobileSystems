@@ -6,7 +6,7 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import com.example.myapplication.data.model.Item
 
-@Database(entities = [Item::class], version = 2, exportSchema = false)
+@Database(entities = [Item::class], version = 3, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
 
     abstract fun itemDao(): ItemDao
@@ -14,6 +14,6 @@ abstract class AppDatabase : RoomDatabase() {
     companion object {
         fun create(context: Context): AppDatabase =
             Room.databaseBuilder(context, AppDatabase::class.java, "dormswap.db")
-                .addMigrations(councilListingsMigration).build()
+                .addMigrations(councilListingsMigration, reservationMigration).build()
     }
 }

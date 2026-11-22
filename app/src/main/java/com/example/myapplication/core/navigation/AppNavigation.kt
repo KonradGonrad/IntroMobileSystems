@@ -29,7 +29,7 @@ object Routes {
 }
 
 @Composable
-fun AppNavigation() {
+fun AppNavigation(openActivity: Boolean = false, consumed: () -> Unit = {}) {
     val app = androidx.compose.ui.platform.LocalContext.current.applicationContext as com.example.myapplication.DormSwapApp
     val user = app.auth.user.collectAsStateWithLifecycle().value
     if (user == null) { LoginScreen(); return }
@@ -44,8 +44,14 @@ fun AppNavigation() {
     val scope = androidx.compose.runtime.rememberCoroutineScope()
     val navController = rememberNavController()
 
+    androidx.compose.runtime.LaunchedEffect(openActivity) {
+        if (openActivity) { navController.navigate("activity") { launchSingleTop = true }; consumed() }
+    }
+    androidx.compose.foundation.layout.Column {
+    com.example.myapplication.ui.account.SyncStrip(app.repository) { navController.navigate("activity") { launchSingleTop = true } }
     NavHost(navController = navController, startDestination = Routes.FEED) {
 
+        composable("activity") { com.example.myapplication.ui.account.ActivityScreen(app.repository.activity) { navController.popBackStack() } }
         composable(Routes.ACCOUNT) {
             AccountScreen(
                 onBackClick = { navController.popBackStack() },
@@ -89,6 +95,7 @@ fun AppNavigation() {
                 onEdit = { id -> navController.navigate("edit/$id") },
                 onChat = { id -> navController.navigate("chat/$id") })
         }
+    }
     }
     }
 }

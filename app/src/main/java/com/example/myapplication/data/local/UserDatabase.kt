@@ -54,6 +54,14 @@ interface CloudDao {
     @Query("UPDATE messages SET pending = 0 WHERE id = :id") suspend fun confirmMessage(id: String)
 }
 
+internal val reservationMigration = object : Migration(2, 3) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE items ADD COLUMN reserver TEXT")
+        db.execSQL("ALTER TABLE items ADD COLUMN expires INTEGER")
+        db.execSQL("ALTER TABLE items ADD COLUMN blockedUntil INTEGER")
+    }
+}
+
 internal val councilListingsMigration = object : Migration(1, 2) {
     override fun migrate(db: SupportSQLiteDatabase) {
         db.execSQL("ALTER TABLE items ADD COLUMN isCouncil INTEGER NOT NULL DEFAULT 0")
@@ -61,7 +69,7 @@ internal val councilListingsMigration = object : Migration(1, 2) {
 }
 
 /** Separate Room files prevent one account from seeing another account's cached data. */
-@Database(entities = [Item::class, PendingAction::class, Conversation::class, ChatMessage::class], version = 2, exportSchema = false)
+@Database(entities = [Item::class, PendingAction::class, Conversation::class, ChatMessage::class], version = 3, exportSchema = false)
 abstract class UserDatabase : RoomDatabase() {
     abstract fun items(): ItemDao
     abstract fun cloud(): CloudDao
@@ -69,7 +77,7 @@ abstract class UserDatabase : RoomDatabase() {
         fun create(context: Context, userId: String): UserDatabase {
             require(Regex("[a-fA-F0-9-]{36}").matches(userId))
             return Room.databaseBuilder(context, UserDatabase::class.java, "dormswap-$userId.db")
-                .addMigrations(councilListingsMigration).build()
+                .addMigrations(councilListingsMigration, reservationMigration).build()
         }
     }
 }

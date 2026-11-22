@@ -14,12 +14,14 @@ class ChatViewModel(saved: SavedStateHandle,private val repo: ItemRepository) : 
     val conversationId: String? = saved["conversationId"]
     val conversations=repo.conversations.stateIn(viewModelScope,SharingStarted.WhileSubscribed(5000),emptyList())
     val messages=repo.messages(conversationId.orEmpty()).stateIn(viewModelScope,SharingStarted.WhileSubscribed(5000),emptyList())
+    val rejectedMessages = repo.failedActions.map { failures ->
+        failures.filter { it.kind == "message" }.map { it.targetId }.toSet()
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptySet())
     val online=repo.isOnline
     val sync=repo.syncStatus
     var draft by mutableStateOf("")
     var busy by mutableStateOf(false); private set
     var error by mutableStateOf<String?>(null); private set
-    suspend fun refresh()=repo.sync()
     fun send() {
         if(busy || conversationId==null) return
         if(draft.trim().length !in 1..2000) { error="Message must have 1–2000 characters."; return }

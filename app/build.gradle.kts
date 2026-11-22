@@ -16,8 +16,8 @@ android {
         applicationId = "com.example.myapplication"
         minSdk = 24
         targetSdk = 37
-        versionCode = 3
-        versionName = "0.3-m3"
+        versionCode = 4
+        versionName = "0.3.1-m3.1"
 
         val config = Properties().apply {
             val file = rootProject.file("local.properties")
@@ -28,6 +28,10 @@ android {
                 .replace("\\", "\\\\").replace("\"", "\\\"") + "\""
         buildConfigField("String", "SUPABASE_URL", configString("SUPABASE_URL"))
         buildConfigField("String", "SUPABASE_ANON_KEY", configString("SUPABASE_ANON_KEY"))
+
+        for (key in listOf("FIREBASE_APP_ID", "FIREBASE_API_KEY", "FIREBASE_PROJECT_ID", "FIREBASE_SENDER_ID")) {
+            buildConfigField("String", key, configString(key))
+        }
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -52,6 +56,7 @@ android {
 }
 
 dependencies {
+    implementation("com.google.firebase:firebase-messaging:24.1.2")
     implementation(libs.commons.csv)
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.core.ktx)

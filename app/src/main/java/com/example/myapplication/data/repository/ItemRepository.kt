@@ -25,7 +25,8 @@ sealed interface SyncStatus {
 /** Room is the UI's source of truth. A durable outbox retries actual Supabase writes. */
 class ItemRepository(
     private val db: UserDatabase, private val api: CloudApi, private val user: AuthUser,
-    networkMonitor: NetworkMonitor, private val prefs: AppPreferences, private val appScope: CoroutineScope
+    networkMonitor: NetworkMonitor, private val prefs: AppPreferences, private val appScope: CoroutineScope,
+    val activity: com.example.myapplication.data.notifications.ActivityInbox
 ) {
     private val dao=db.items()
     private val cloud=db.cloud()
@@ -90,6 +91,7 @@ class ItemRepository(
             }
             val (conversations,messages)=api.chats()
             db.withTransaction { cloud.saveConversations(conversations); cloud.saveMessages(messages) }
+            activity.update(api.rpc("activity_snapshot"))
             prefs.setLastSyncTime(System.currentTimeMillis())
             val failures=cloud.pending().count { it.error!=null }
             _syncStatus.value=if(failures==0) SyncStatus.Success(server.size) else SyncStatus.Error("$failures changes were rejected. Open Account to review them.")
@@ -124,6 +126,10 @@ class ItemRepository(
     private suspend fun change(id: String,kind: String,transform: (Item)->Item?) {
         mutex.withLock { db.withTransaction {
             val old=dao.getById(id) ?: return@withTransaction
+            if (kind == "reserve" && old.status == ListingStatus.ACTIVE) {
+                check((old.blockedUntil ?: 0) <= System.currentTimeMillis()) { "Please wait before reserving this listing again." }
+                check(dao.getAll().count { it.reservedByMe } < 3) { "You already have 3 reservations." }
+            }
             val item=transform(old) ?: return@withTransaction
             if(kind=="delete") dao.delete(id) else dao.upsert(item.copy(pendingSync=true))
             queue(kind,id,JSONObject().put("liked",item.isLiked))
@@ -131,8 +137,8 @@ class ItemRepository(
         requestSync()
     }
     suspend fun toggleLike(id: String)=change(id,"like") { it.copy(isLiked=!it.isLiked) }
-    suspend fun reserve(id: String)=change(id,"reserve") { if(it.isMine || it.status!=ListingStatus.ACTIVE) null else it.copy(status=ListingStatus.RESERVED,reservedByMe=true) }
-    suspend fun cancelReservation(id: String)=change(id,"cancel") { if(!it.reservedByMe) null else it.copy(status=ListingStatus.ACTIVE,reservedByMe=false) }
+    suspend fun reserve(id: String)=change(id,"reserve") { if(it.isMine || it.status!=ListingStatus.ACTIVE) null else it.copy(status=ListingStatus.RESERVED,reservedByMe=true,reserver=user.name) }
+    suspend fun cancelReservation(id: String)=change(id,"cancel") { if(!it.reservedByMe) null else it.copy(status=ListingStatus.ACTIVE,reservedByMe=false,reserver=null,expires=null,blockedUntil=System.currentTimeMillis()+86_400_000L) }
     suspend fun deleteListing(id: String)=change(id,"delete") { if(it.isMine) it else null }
     suspend fun startChat(id: String): String = mutex.withLock {
         if(!isOnline.value) throw IOException("Connect to start a new conversation. Existing chats work offline.")

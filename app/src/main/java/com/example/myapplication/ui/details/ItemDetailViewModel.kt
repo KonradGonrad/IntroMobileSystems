@@ -58,7 +58,7 @@ class ItemDetailViewModel(
     }
 
     fun onReserveClick() {
-        viewModelScope.launch { repository.reserve(itemId) }
+        action { repository.reserve(itemId) }
     }
 
     fun onCancelReservationClick() {

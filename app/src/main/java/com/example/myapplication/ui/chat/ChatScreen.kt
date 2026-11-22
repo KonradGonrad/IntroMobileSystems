@@ -12,31 +12,23 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.compose.ui.platform.LocalLifecycleOwner
 import com.example.myapplication.DormSwapApp
 import com.example.myapplication.data.repository.SyncStatus
-import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatScreen(onBack:()->Unit,onOpen:(String)->Unit,vm: ChatViewModel=viewModel(factory=ChatViewModel.Factory)) {
     val conversations by vm.conversations.collectAsStateWithLifecycle()
     val messages by vm.messages.collectAsStateWithLifecycle()
+    val rejected by vm.rejectedMessages.collectAsStateWithLifecycle()
     val online by vm.online.collectAsStateWithLifecycle()
     val sync by vm.sync.collectAsStateWithLifecycle()
-    val owner=LocalLifecycleOwner.current
     val user=(LocalContext.current.applicationContext as DormSwapApp).auth.user.value
     val conversation=conversations.find { it.id==vm.conversationId }
     val scroll=rememberLazyListState()
-    LaunchedEffect(owner,vm) {
-        owner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
-            while(true) { vm.refresh(); delay(5000) }
-        }
-    }
+
     LaunchedEffect(messages.size) { if(messages.isNotEmpty()) scroll.animateScrollToItem(messages.lastIndex) }
     Scaffold(topBar={TopAppBar(title={Text(if(vm.conversationId==null) "Messages" else conversation?.otherName ?: "Conversation")},
         navigationIcon={IconButton(onClick=onBack){Icon(Icons.AutoMirrored.Filled.ArrowBack,"Go back")}})}) { padding ->
@@ -48,6 +40,7 @@ fun ChatScreen(onBack:()->Unit,onOpen:(String)->Unit,vm: ChatViewModel=viewModel
                 LazyColumn { items(conversations,key={it.id}) { c ->
                     ListItem(headlineContent={Text(c.otherName)},supportingContent={Text(c.title+if(c.unavailable) " · Unavailable" else "")},
                         modifier=Modifier.clickable { onOpen(c.id) }.heightIn(min=64.dp))
+                    HorizontalDivider()
                 } }
             } else {
                 Text(conversation?.title.orEmpty(),style=MaterialTheme.typography.titleMedium)
@@ -59,7 +52,11 @@ fun ChatScreen(onBack:()->Unit,onOpen:(String)->Unit,vm: ChatViewModel=viewModel
                             Column(Modifier.padding(12.dp)) {
                                 Text(if(message.senderId==user?.id) "You" else conversation?.otherName ?: "Student",style=MaterialTheme.typography.labelMedium)
                                 Text(message.body)
-                                Text(if(message.pending) "Waiting to send" else java.text.DateFormat.getTimeInstance(java.text.DateFormat.SHORT).format(java.util.Date(message.createdAt)),style=MaterialTheme.typography.labelSmall)
+                                Text(when {
+                                    message.id in rejected -> "Send failed · Review in Account"
+                                    message.pending -> "Waiting to send"
+                                    else -> java.text.DateFormat.getTimeInstance(java.text.DateFormat.SHORT).format(java.util.Date(message.createdAt))
+                                },style=MaterialTheme.typography.labelSmall)
                             }
                         }
                     }
