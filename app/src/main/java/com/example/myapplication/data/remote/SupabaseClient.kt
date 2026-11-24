@@ -18,7 +18,7 @@ class SupabaseClient {
     )
     suspend fun request(path: String, method: String = "GET", token: String? = null,
                         body: ByteArray? = null, contentType: String = "application/json"): ByteArray = withContext(Dispatchers.IO) {
-        if (!configured) throw IOException("Supabase is not configured. Follow M3/backend/README.md.")
+        if (!configured) throw IOException("Set SUPABASE_URL and SUPABASE_ANON_KEY, then rebuild the app.")
         val connection = URL(BuildConfig.SUPABASE_URL.trimEnd('/') + path).openConnection() as HttpURLConnection
         try {
             connection.requestMethod = method

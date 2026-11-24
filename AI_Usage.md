@@ -25,3 +25,7 @@ Assistance with the theoretical preparation for the component / my component M2 
 Proposing and checking tests
 
 Writing readme
+
+## M3
+
+AI helped with implementation and documentation. Tests checked the university email domain, reservation sync and photo scaling.
