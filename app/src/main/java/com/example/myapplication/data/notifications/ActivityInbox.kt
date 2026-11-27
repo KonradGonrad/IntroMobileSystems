@@ -19,6 +19,17 @@ class ActivityInbox(context: Context, userId: String) {
     val enabled = _enabled.asStateFlow()
     private val _notices = MutableStateFlow(decode(prefs.getString("inbox","[]") ?: "[]"))
     val notices = _notices.asStateFlow()
+    private val _readIds = MutableStateFlow(prefs.getStringSet("read_ids", emptySet()).orEmpty().toSet())
+    val readIds = _readIds.asStateFlow()
+
+    fun markRead(displayed: List<ActivityNotice>) {
+        val ids = displayed.mapTo(_readIds.value.toMutableSet()) { it.id }
+        ids.retainAll(notices.value.map { it.id }.toSet())
+        if (ids != _readIds.value) {
+            prefs.edit().putStringSet("read_ids", ids).apply()
+            _readIds.value = ids
+        }
+    }
 
     fun toggle(kind: AlertType, allow: Boolean) {
         prefs.edit().putBoolean(kind.key,allow).apply()

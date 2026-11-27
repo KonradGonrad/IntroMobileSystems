@@ -2,6 +2,8 @@ package com.example.myapplication.ui.account
 
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
@@ -17,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.myapplication.data.notifications.*
 import com.example.myapplication.data.repository.*
@@ -28,6 +31,8 @@ fun SyncStrip(repo: ItemRepository, onActivity: () -> Unit) {
     val status by repo.syncStatus.collectAsStateWithLifecycle()
     val notices by repo.activity.notices.collectAsStateWithLifecycle()
     val enabled by repo.activity.enabled.collectAsStateWithLifecycle()
+    val readIds by repo.activity.readIds.collectAsStateWithLifecycle()
+    val hasUnread = notices.any { it.kind in enabled && it.id !in readIds }
     val latest = notices.firstOrNull()
     var previous by remember(repo) { mutableStateOf(latest?.id) }
     var alert by remember(repo) { mutableStateOf<String?>(null) }
@@ -47,7 +52,16 @@ fun SyncStrip(repo: ItemRepository, onActivity: () -> Unit) {
                 status is SyncStatus.Success -> "Up to date"
                 else -> "Waiting for sync"
             },modifier=Modifier.weight(1f),style=MaterialTheme.typography.labelMedium)
-            TextButton(onClick=onActivity) { Text("Notifications") }
+            TextButton(
+                onClick = onActivity,
+                modifier = Modifier.semantics {
+                    if (hasUnread) stateDescription = "Unread notifications"
+                }
+            ) {
+                BadgedBox(badge = {
+                    if (hasUnread) Badge(containerColor = MaterialTheme.colorScheme.error)
+                }) { Text("Notifications") }
+            }
         }
     }
 }
@@ -58,6 +72,11 @@ fun ActivityScreen(inbox: ActivityInbox, onBack: () -> Unit) {
     val notices by inbox.notices.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val owner = androidx.compose.ui.platform.LocalLifecycleOwner.current
+    val visibleNotices = notices.filter { it.kind in enabled }
+    val lifecycleState by owner.lifecycle.currentStateFlow.collectAsState()
+    LaunchedEffect(inbox, visibleNotices, lifecycleState) {
+        if (lifecycleState == Lifecycle.State.RESUMED) inbox.markRead(visibleNotices)
+    }
     fun hasPermission() = Build.VERSION.SDK_INT < 33 || ContextCompat.checkSelfPermission(context,
         Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
     var allowed by remember { mutableStateOf(hasPermission()) }
@@ -88,9 +107,9 @@ fun ActivityScreen(inbox: ActivityInbox, onBack: () -> Unit) {
             }
             HorizontalDivider()
             Text("Recent activity",style=MaterialTheme.typography.titleMedium)
-            if (notices.none { it.kind in enabled }) Text("No recent notifications.")
+            if (visibleNotices.isEmpty()) Text("No recent notifications.")
         }
-        items(notices.filter { it.kind in enabled }, key={it.id}) { notice ->
+        items(visibleNotices, key={it.id}) { notice ->
             ListItem(headlineContent={Text(notice.summary)},supportingContent={Text(notice.kind.label)})
             HorizontalDivider()
         }
